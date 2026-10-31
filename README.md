@@ -61,3 +61,5 @@ python3 scripts/mobile_test.py
 Os testes foram executados em Chromium com telas de 375, 390 e 430 px. O teste executa também em WebKit se esse runtime estiver instalado; no ambiente atual ele não está disponível. Não foi realizada validação em um iPhone físico.
 
 Premissas e fontes são apresentadas em tópicos expansíveis, preservando integralmente o conteúdo original. A curva S tem um marcador sincronizado com a semana selecionada. As alterações visuais mantêm o formato de armazenamento e backup, sem apagar os dados locais existentes.
+
+A abertura inclui uma orientação breve com links para as seções. Em Orçamento e Insumos, as 19 fases começam recolhidas; toque na fase para revelar seus subitens e no subitem para ver os detalhes. A busca e o filtro de fase abrem os grupos correspondentes automaticamente. O estado de expansão é preservado durante a sessão, inclusive após edições, e reinicia recolhido ao recarregar a página. O Gantt mantém sua apresentação anterior.

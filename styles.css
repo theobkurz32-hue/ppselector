@@ -23,3 +23,15 @@ footer{display:flex;justify-content:space-between;gap:15px;border-top:1px solid 
  dialog{inset:auto 0 0;margin:0;max-width:100%;width:100%;max-height:90dvh;border-radius:19px 19px 0 0;padding:24px 18px calc(20px + env(safe-area-inset-bottom))}dialog::before{content:'';position:absolute;top:8px;left:calc(50% - 18px);width:36px;height:3px;border-radius:2px;background:#555}.dialog-top{margin-bottom:20px}.dialog-top h2{font-size:16px;line-height:1.5}.field-grid{grid-template-columns:1fr;gap:15px}.field-grid label{font-size:12px}.dialog-actions{display:grid;grid-template-columns:1fr 1fr}.dialog-actions .button{min-height:46px;font-size:13px}.dialog-hint{font-size:12px}.icon-button{font-size:25px}#toast{bottom:calc(88px + env(safe-area-inset-bottom));font-size:12px}footer{display:block;font-size:8px;margin-top:23px;line-height:1.7}footer span{display:block;margin-top:4px}
 }
 @media(prefers-reduced-motion:no-preference){.button,nav a,.chevron{transition:background .15s ease,transform .15s ease}.button:active{transform:scale(.98)}}
+/* Brief orientation and phase-level disclosure. */
+.overview-intro{max-width:850px;margin:0 0 25px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.overview-intro p{font-size:13px;line-height:1.8;color:#aaa}
+.overview-intro a{color:#eee;text-decoration:underline;text-decoration-color:#666;text-underline-offset:3px}
+.overview-intro a:hover{text-decoration-color:#fff}.overview-intro .intro-transition{margin-top:10px;color:#ddd;font-size:12px}
+.phase-group{border-bottom:1px solid #333}.phase-group:last-child{border-bottom:0}
+.phase-heading{display:flex;align-items:center;gap:15px;min-height:58px;padding:12px 16px;background:#191919;list-style:none}
+.phase-heading:hover{background:#222}.phase-group[open]>.phase-heading{background:#242424;border-bottom:1px solid #333}
+.phase-name{flex:1;min-width:0;font-size:12px;font-weight:500;line-height:1.5}.phase-meta{text-align:right;flex-shrink:0}
+.phase-meta small{display:block;font-size:9px;margin-bottom:2px;color:#929292}.phase-meta b{display:block;font-weight:500;font-size:12px;font-variant-numeric:tabular-nums}
+.phase-items{border-left:2px solid #414141;margin-left:15px}.phase-items .compact-row:last-child{border-bottom:0}
+@media(max-width:700px){.overview-intro{margin-bottom:20px;padding-bottom:17px}.overview-intro p{font-size:12px;line-height:1.8}.overview-intro .intro-transition{font-size:11px;margin-top:9px}.phase-heading{padding:11px 12px;gap:9px;min-height:57px}.phase-name{font-size:11px}.phase-meta small{font-size:8px}.phase-meta b{font-size:10px}.phase-items{margin-left:9px}}

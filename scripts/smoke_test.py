@@ -18,6 +18,11 @@ with sync_playwright() as p:
     page.screenshot(path='/tmp/riviera-dark-desktop.png',full_page=True)
     page.locator('nav [data-view="quantitativos"]').click()
     expect(page.locator('.resource-row')).to_have_count(383)
+    expect(page.locator('.phase-group')).to_have_count(19)
+    assert page.locator('.phase-group[open]').count()==0
+    page.locator('.phase-heading').first.focus();page.keyboard.press('Enter')
+    assert page.locator('.resource-row > summary').first.is_visible()
+    page.keyboard.press('Enter');assert not page.locator('.resource-row > summary').first.is_visible()
     page.locator('#search').fill('01.02');expect(page.locator('.resource-row')).to_have_count(1)
     page.locator('.resource-row > summary').click();page.locator('[data-resource]').click()
     page.locator('[name="price"]').fill('100');page.get_by_role('button',name='Salvar alterações').click()
