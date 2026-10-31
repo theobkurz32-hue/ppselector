@@ -2,6 +2,11 @@
 from playwright.sync_api import sync_playwright, expect
 import json
 
+def open_phase(page):
+    assert page.locator('.phase-group[open]').count()==0
+    page.locator('.phase-heading .chevron').first.click()
+
+
 with sync_playwright() as p:
     browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
     context=browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
@@ -23,17 +28,19 @@ with sync_playwright() as p:
     page.locator('.phase-heading').first.focus();page.keyboard.press('Enter')
     assert page.locator('.resource-row > summary').first.is_visible()
     page.keyboard.press('Enter');assert not page.locator('.resource-row > summary').first.is_visible()
-    page.locator('#search').fill('01.02');expect(page.locator('.resource-row')).to_have_count(1)
+    page.locator('#search').fill('01.02');expect(page.locator('.resource-row')).to_have_count(1);open_phase(page)
     page.locator('.resource-row > summary').click();page.locator('[data-resource]').click()
     page.locator('[name="price"]').fill('100');page.get_by_role('button',name='Salvar alterações').click()
+    open_phase(page)
     assert '100,00' in page.locator('.resource-row > summary').inner_text()
     page.reload();page.locator('#app').wait_for(state='visible');page.locator('#search').fill('01.02')
+    open_phase(page)
     assert '100,00' in page.locator('.resource-row > summary').inner_text()
     page.locator('nav [data-view="orcamento"]').click();expect(page.locator('.budget-row')).to_have_count(183)
     assert '1.650.860,72' in page.locator('.section-summary').inner_text()
     page.locator('.settings-panel > summary').click();page.locator('#reserve').fill('10');page.locator('#saveSettings').click()
     assert '1.815.946,79' in page.locator('.section-summary').inner_text()
-    page.locator('#search').fill('01.02');page.locator('.budget-row > summary').click()
+    page.locator('#search').fill('01.02');open_phase(page);page.locator('.budget-row > summary').click()
     assert 'Terceiros' in page.locator('.row-detail').inner_text()
     assert '100,00' in page.locator('.row-detail').inner_text()
     page.locator('[data-service="01.02"]').click();expect(page.locator('.resource-row')).to_have_count(1)

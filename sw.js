@@ -1,5 +1,5 @@
-const CACHE = 'riviera-v5-phase-groups';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './data/project.json', './manifest.webmanifest'];
+const CACHE = 'riviera-v6-explicit-fold';
+const ASSETS = ['./', './index.html', './styles.css?v=6', './app.js?v=6', './data/project.json', './manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

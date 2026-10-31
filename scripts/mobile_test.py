@@ -10,6 +10,10 @@ def check(browser,width,name):
     assert not page.locator('.heading-actions').is_visible()
     assert page.locator('#overviewIntro').is_visible()
     assert page.locator('#overviewIntro a').count()==4
+    assert 'Seja bem-vindo ao dashboard da sua obra!' in page.locator('#overviewIntro').inner_text()
+    boxes=page.locator('.metric').evaluate_all('(els)=>els.map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))')
+    assert max(b['height'] for b in boxes)-min(b['height'] for b in boxes)<1
+    assert max(b['width'] for b in boxes)-min(b['width'] for b in boxes)<1
     assert not page.locator('a[href*="xlsx"]').count()
     page.locator('#curveRange').fill('26');assert '2027' in page.locator('#curveWeek').inner_text()
     page.locator('[data-month="2027-03"]').tap();assert 'março' in page.locator('#monthReadout').inner_text()
@@ -31,7 +35,9 @@ def check(browser,width,name):
             row=page.locator('.compact-row > summary').first
             assert row.bounding_box()['height']<=54
             page.locator('#search').fill('01.02');expect(page.locator('.compact-row')).to_have_count(1)
-            assert page.locator('.phase-group[open]').count()==1
+            assert page.locator('.phase-group[open]').count()==0
+            assert not page.locator('.compact-row > summary').is_visible()
+            page.locator('.phase-heading .chevron').first.tap()
             page.locator('.compact-row > summary').tap();assert page.locator('.row-detail').is_visible()
             if section=='orcamento':
                 assert 'Terceiros' in page.locator('.row-detail').inner_text()
@@ -40,6 +46,8 @@ def check(browser,width,name):
                 page.locator('[data-resource]').tap();page.locator('[name="price"]').fill('125')
                 assert page.locator('[name="price"]').evaluate('(e)=>parseFloat(getComputedStyle(e).fontSize)')>=16
                 page.get_by_role('button',name='Salvar alterações').tap()
+                assert page.locator('.phase-group[open]').count()==0
+                page.locator('.phase-heading .chevron').first.tap()
                 assert '125,00' in page.locator('.compact-row > summary').inner_text()
         if section=='planejamento':
             expect(page.locator('.gantt-row')).to_have_count(183)
@@ -54,8 +62,12 @@ def check(browser,width,name):
             page.locator('[data-mode="list"]').tap();expect(page.locator('.task-row')).to_have_count(1)
             assert page.locator('.task-row > summary').bounding_box()['height']<=54
             page.locator('.task-row > summary').tap();assert 'Em andamento' in page.locator('.task-row').inner_text()
+    page.locator('nav [data-view="orcamento"]').tap()
+    expect(page.locator('.phase-group')).to_have_count(19)
+    assert page.locator('.phase-group[open]').count()==0
+    assert not page.locator('.compact-row > summary').first.is_visible()
     assert not errors,errors
-    context.close();print(f'PASS {name} {width}px: dark theme, dashboard, intro links, touch charts, collapsed phases and search reveal, thin rows, expand details, resource editing, Gantt scroll/zoom, task progress, no page overflow/errors.')
+    context.close();print(f'PASS {name} {width}px: dark theme, dashboard, intro links, touch charts, explicit phase expansion even after filtering; equal indicator dimensions, thin rows, expand details, resource editing, Gantt scroll/zoom, task progress, no page overflow/errors.')
 
 with sync_playwright() as p:
     browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
