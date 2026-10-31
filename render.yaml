@@ -1,0 +1,22 @@
+# Requires a paid persistent-disk web service. Review the current Render price before creating it.
+services:
+  - type: web
+    name: n14-riviera
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: python -m server.run
+    healthCheckPath: /healthz
+    disk:
+      name: riviera-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: RIVIERA_DB_PATH
+        value: /var/data/riviera.sqlite3
+      - key: RIVIERA_ADMIN_USER
+        sync: false
+      - key: RIVIERA_ADMIN_PIN
+        sync: false

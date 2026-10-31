@@ -63,3 +63,9 @@ Os testes foram executados em Chromium com telas de 375, 390 e 430 px. O teste e
 Premissas e fontes são apresentadas em tópicos expansíveis, preservando integralmente o conteúdo original. A curva S tem um marcador sincronizado com a semana selecionada. As alterações visuais mantêm o formato de armazenamento e backup, sem apagar os dados locais existentes.
 
 A abertura inclui uma orientação breve com links para as seções. Em Orçamento e Insumos, as 19 fases começam recolhidas; toque na fase para revelar seus subitens e no subitem para ver os detalhes. A busca e o filtro mostram as fases correspondentes, mas não abrem seus subitens. As fases só abrem por toque ou teclado na linha principal ou seta. Ao entrar na seção, filtrar ou salvar uma edição, elas voltam a ficar recolhidas. Os quatro indicadores do início têm dimensões padronizadas. O Gantt mantém sua apresentação anterior.
+
+## Banco compartilhado e controle de acesso
+
+Foi acrescentado um servidor com login por usuário e PIN de cinco números, perfis leitor/editor/administrador, banco SQLite persistente e gestão de contas. A configuração de hospedagem no Render está em `render.yaml`. **Esse modo exige um serviço web pago e disco persistente; o GitHub Pages não o executa.** A versão estática continua independente até a ativação da nova hospedagem.
+
+Siga [o roteiro completo de implantação, migração e testes](docs/SHARED_HOSTING.md). Cadastre o primeiro administrador nos segredos do provedor, nunca no código ou no chat. Não há conta ou PIN de produção predefinido.
