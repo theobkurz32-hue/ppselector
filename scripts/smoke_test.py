@@ -1,0 +1,56 @@
+"""Functional regression checks. Start the HTTP server on port 8000 first."""
+from playwright.sync_api import sync_playwright, expect
+import json
+base='http://127.0.0.1:8000/'
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+ c=b.new_context(viewport={'width':1440,'height':1100},accept_downloads=True)
+ page=c.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ page.goto(base);page.locator('#app').wait_for(state='visible')
+ assert 'R$ 1.782.864,67' in page.locator('#content').inner_text().replace('\xa0',' ')
+ assert 'R$ 1.650.800,62' in page.locator('#content').inner_text().replace('\xa0',' ')
+ page.locator('a[data-view="quantitativos"]').click()
+ expect(page.locator('#tableBody tr')).to_have_count(383)
+ page.locator('#search').fill('01.02');assert page.locator('#tableBody tr').count()==1
+ page.get_by_role('button',name='Editar',exact=True).click()
+ page.locator('[name="price"]').fill('100')
+ page.get_by_role('button',name='Salvar alterações').click()
+ assert 'R$ 100,00' in page.locator('#tableBody').inner_text().replace('\xa0',' ')
+ page.reload();page.locator('#app').wait_for(state='visible');page.locator('#search').fill('01.02')
+ assert 'R$ 100,00' in page.locator('#tableBody').inner_text().replace('\xa0',' ')
+ page.locator('a[data-view="orcamento"]').click();page.locator('#reserve').wait_for()
+ assert 'R$ 1.650.860,72' in page.locator('#content').inner_text().replace('\xa0',' ')
+ page.locator('#reserve').fill('10');page.locator('#saveSettings').click()
+ assert 'R$ 1.815.946,79' in page.locator('#content').inner_text().replace('\xa0',' ')
+ page.locator('#search').fill('01.02');page.locator('[data-service="01.02"]').click()
+ page.wait_for_timeout(100)
+ assert page.locator('#search').input_value()=='01.02'
+ assert page.locator('#tableBody tr').count()==1
+ page.locator('a[data-view="planejamento"]').click()
+ expect(page.locator('#tableBody tr')).to_have_count(183)
+ page.locator('[data-mode="list"]').click()
+ page.locator('#search').fill('01.02');page.locator('[data-task="01.02"]').click()
+ page.locator('[name="progress"]').fill('100')
+ page.get_by_role('button',name='Salvar alterações').click()
+ assert 'Concluído' in page.locator('#tableBody').inner_text().replace('\xa0',' ')
+ page.locator('[data-task="01.02"]').click();page.locator('[name="end"]').fill('2026-01-01');page.get_by_role('button',name='Salvar alterações').click()
+ assert page.locator('#editor').is_visible();page.locator('#cancelEditor').click()
+ with page.expect_download() as dl:page.locator('#export').click()
+ assert 'Concluído' in open(dl.value.path(),encoding='utf-8-sig').read()
+ with page.expect_download() as dl:page.locator('#backup').click()
+ backup_path=dl.value.path();backup=json.load(open(backup_path));assert backup['resources'][1]['price']==100
+ page.on('dialog',lambda d:d.accept())
+ page.locator('#backupFile').set_input_files(backup_path)
+ page.wait_for_timeout(100)
+ assert 'Backup restaurado' in page.locator('#toast').inner_text()
+ page.locator('a[data-view="premissas"]').click();expect(page.locator('.note-card')).to_have_count(len(backup['notes']))
+ page.locator('a[data-view="resumo"]').click();page.locator('.dashboard-grid').wait_for()
+ page.evaluate('navigator.serviceWorker.ready.then(()=>true)');page.reload();page.wait_for_function('navigator.serviceWorker.controller !== null')
+ c.set_offline(True);page.reload();page.locator('#app').wait_for(state='visible')
+ assert 'R$ 1.815.946,79' in page.locator('#content').inner_text().replace('\xa0',' ')
+ c.set_offline(False)
+ page.set_viewport_size({'width':390,'height':844})
+ assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+ assert not errors,errors
+ print('PASS: baseline totals; all 383 resources and 183 tasks; edit and persistence; linked budget updates; reserve; budget-to-resource filter; progress/status; date validation; CSV; backup restore; notes; offline; mobile width. No page errors.')
+ b.close()

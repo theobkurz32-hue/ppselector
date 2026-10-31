@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seleção de Cabo PP — Queda de Tensão & Ampacidade</title>
+  <meta name="description" content="Calculadora técnica para seleção de cabo PP com corrente, queda de tensão e número de vias.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#111111">
+  <style>
+    :root { --bg:#0f0f10; --card:#17181b; --muted:#9aa1a9; --text:#e7e9ec; --accent:#4aa3ff; --danger:#ff6b6b; }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    header{padding:16px 20px;border-bottom:1px solid #222}
+    h1{font-size:18px;margin:0 0 6px 0}
+    h2{font-size:16px;margin:18px 0 8px 0}
+    .wrap{max-width:1080px;margin:0 auto;padding:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .col{flex:1 1 320px;min-width:280px}
+    .card{background:var(--card);border:1px solid #222;border-radius:10px;padding:14px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,button,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #2a2d33;background:#101114;color:var(--text)}
+    input[type="checkbox"]{width:auto}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .muted{color:var(--muted);font-size:12px}
+    .metric{background:#121317;border:1px solid #222;border-radius:8px;padding:10px}
+    .metric .title{color:var(--muted);font-size:12px}
+    .metric .value{font-weight:600;font-size:16px;margin-top:2px}
+    .row-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:#1a1c21;border:1px solid #2a2d33;color:var(--text);cursor:pointer}
+    .btn:hover{border-color:#3b3f48}
+    .btn.primary{background:linear-gradient(180deg,#2c6ddf,#2b5fbe);border:none}
+    .btn.ghost{background:transparent;border:1px dashed #3b3f48}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border-bottom:1px solid #222;padding:8px;text-align:left}
+    .right{text-align:right}
+    .danger{color:var(--danger)}
+    footer{padding:20px;color:var(--muted);text-align:center}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #2a2d33;color:var(--muted);font-size:11px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Seleção de Cabo PP</h1>
+    <div class="muted">Dimensiona por <b>corrente</b> e <b>queda de tensão</b>, recomenda <b>bitola final</b> e <b>nº de vias</b>. Base técnica: NBR 5410 (cordões PP PVC 70&nbsp;°C).</div>
+  </header>
+  <div class="wrap">
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <h2>Entrada do cenário</h2>
+          <div class="grid">
+            <div>
+              <label>Nome</label>
+              <input id="name" placeholder="Ex.: Bomba 1 CV">
+            </div>
+            <div>
+              <label>Fases</label>
+              <select id="phases">
+                <option value="1">Monofásico (1)</option>
+                <option value="2">Bifásico (2)</option>
+                <option value="3">Trifásico (3)</option>
+              </select>
+            </div>
+            <div>
+              <label>Potência (W)</label>
+              <input id="power" type="number" min="0" step="10" value="1500">
+            </div>
+            <div>
+              <label>Tensão (V)</label>
+              <input id="voltage" type="number" min="12" step="1" value="220">
+            </div>
+            <div>
+              <label>FP</label>
+              <input id="pf" type="number" min="0.5" max="1" step="0.01" value="0.92">
+            </div>
+            <div>
+              <label>η (rendimento)</label>
+              <input id="eff" type="number" min="0.5" max="1" step="0.01" value="0.95">
+            </div>
+            <div>
+              <label>Distância (m) — ida</label>
+              <input id="distance" type="number" min="0" step="1" value="10">
+            </div>
+            <div>
+              <label>ΔV admissível (%)</label>
+              <input id="drop" type="number" min="1" max="10" step="0.5" value="4">
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label><input id="usePE" type="checkbox" checked> Usar condutor de proteção (terra)</label>
+          </div>
+          <div class="row-actions" style="margin-top:12px">
+            <button class="btn primary" onclick="addScenario()">Adicionar cenário</button>
+            <button class="btn" onclick="saveLocal()">Salvar local</button>
+            <button class="btn" onclick="loadLocal()">Carregar local</button>
+            <button class="btn ghost" onclick="clearScenarios()">Limpar cenários</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h2>Resultados instantâneos</h2>
+          <div class="grid-3" id="liveMetrics">
+            <!-- metrics injected via JS -->
+          </div>
+          <div class="muted" style="margin-top:6px">
+            Notas: resultados para cordões PP (uso móvel/aparente). Para instalação fixa/embutida, aplicar tabelas próprias (EPR/BWF, métodos NBR 5410).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <h2>Cenários</h2>
+          <div class="row-actions">
+            <span class="badge" id="countBadge">0 cenários</span>
+            <button class="btn" onclick="exportCSV()">Exportar CSV</button>
+          </div>
+          <table id="scenariosTable">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th class="right">I (A)</th>
+                <th class="right">Vias</th>
+                <th class="right">Bitola_I (mm²)</th>
+                <th class="right">Bitola_ΔV (mm²)</th>
+                <th class="right">Bitola final (mm²)</th>
+                <th class="right">ΔV final (%)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h2>Tabela de ampacidade (PP PVC 70&nbsp;°C)</h2>
+          <table id="ampacityTable">
+            <thead>
+              <tr><th>Bitola (mm²)</th><th>Corrente (A)</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="row-actions" style="margin-top:8px">
+            <button class="btn" onclick="addAmpacity()">Adicionar linha</button>
+            <button class="btn ghost" onclick="resetAmpacity()">Restaurar padrão</button>
+          </div>
+          <div class="muted" style="margin-top:6px">Ajusta conforme teu catálogo. Padrão: 0,75→6 A; 1,0→10 A; 1,5→15 A; 2,5→21 A; 4,0→28 A; 6,0→36 A; 10→50 A.</div>
+        </div>
+      </div>
+    </div>
+    <footer>
+      Seleção de Cabo PP • NBR 5410 — Resistividade cobre ρ = 0,017241 Ω·mm²/m • PWA offline
+    </footer>
+  </div>
+
+<script>
+// ======== Modelo & Cálculo =========
+const RHO = 0.017241; // ohm*mm2/m
+
+let ampacity = [
+  { size: 0.75, I: 6 },
+  { size: 1.0, I: 10 },
+  { size: 1.5, I: 15 },
+  { size: 2.5, I: 21 },
+  { size: 4.0, I: 28 },
+  { size: 6.0, I: 36 },
+  { size: 10.0, I: 50 },
+];
+
+let scenarios = [];
+
+function current(powerW, voltageV, phases, pf, eff) {
+  if (powerW<=0 || voltageV<=0 || pf<=0 || eff<=0) return 0;
+  if (phases==3) return powerW/(Math.sqrt(3)*voltageV*pf*eff);
+  return powerW/(voltageV*pf*eff);
+}
+function vias(phases, usePE) {
+  if (phases==1) return 2 + (usePE?1:0);
+  if (phases==2) return 2 + (usePE?1:0);
+  return 3 + (usePE?1:0);
+}
+function nextSizeByArea(aReq) {
+  const sorted = [...ampacity].sort((a,b)=>a.size-b.size).map(e=>e.size);
+  if (aReq<=sorted[0]) return sorted[0];
+  for (let s of sorted) if (s>=aReq) return s;
+  return sorted[sorted.length-1];
+}
+function sizeByCurrent(I) {
+  const sorted = [...ampacity].sort((a,b)=>a.I-b.I);
+  for (let e of sorted) if (e.I>=I) return e.size;
+  return sorted[sorted.length-1].size;
+}
+function areaReqForDrop(I, V, phases, L, qPct) {
+  const q = qPct/100; if (q<=0 || V<=0 || L<=0) return 0;
+  if (phases==3) return (Math.sqrt(3)*L*RHO*I)/(q*V);
+  return (2*L*RHO*I)/(q*V);
+}
+function dropPctForArea(area, I, V, phases, L) {
+  if (area<=0 || V<=0 || L<=0) return 0;
+  let dV;
+  if (phases==3) dV = (Math.sqrt(3)*L*RHO*I)/area;
+  else dV = (2*L*RHO*I)/area;
+  return (dV/V)*100;
+}
+
+function evaluate(s) {
+  const I = current(s.power, s.voltage, s.phases, s.pf, s.eff);
+  const v = vias(s.phases, s.usePE);
+  const sizeI = sizeByCurrent(I);
+  const aReq = areaReqForDrop(I, s.voltage, s.phases, s.distance, s.drop);
+  const sizeV = nextSizeByArea(aReq);
+  const finalSize = Math.max(sizeI, sizeV);
+  const dropFinal = dropPctForArea(finalSize, I, s.voltage, s.phases, s.distance);
+  return { I, v, sizeI, sizeV, finalSize, dropFinal };
+}
+
+// ======== UI Helpers =========
+function fmt(n, digits=2){ return isFinite(n) ? n.toFixed(digits) : "-"; }
+
+function readInputs() {
+  return {
+    name: document.getElementById('name').value.trim(),
+    phases: parseInt(document.getElementById('phases').value,10),
+    power: parseFloat(document.getElementById('power').value),
+    voltage: parseFloat(document.getElementById('voltage').value),
+    pf: parseFloat(document.getElementById('pf').value),
+    eff: parseFloat(document.getElementById('eff').value),
+    distance: parseFloat(document.getElementById('distance').value),
+    drop: parseFloat(document.getElementById('drop').value),
+    usePE: document.getElementById('usePE').checked
+  };
+}
+
+function renderLive() {
+  const s = readInputs();
+  const r = evaluate(s);
+  const live = document.getElementById('liveMetrics');
+  live.innerHTML = `
+    <div class="metric"><div class="title">Corrente</div><div class="value">${fmt(r.I)} A</div></div>
+    <div class="metric"><div class="title">Vias recomendadas</div><div class="value">${r.v}x</div></div>
+    <div class="metric"><div class="title">Bitola por corrente</div><div class="value">${fmt(r.sizeI)} mm²</div></div>
+    <div class="metric"><div class="title">Bitola por ΔV</div><div class="value">${fmt(r.sizeV)} mm²</div></div>
+    <div class="metric"><div class="title">Bitola final</div><div class="value">${fmt(r.finalSize)} mm²</div></div>
+    <div class="metric"><div class="title">ΔV com bitola final</div><div class="value">${fmt(r.dropFinal)} %</div></div>
+  `;
+}
+
+function addScenario() {
+  const s = readInputs();
+  if (!s.name) s.name = "Cenário " + (scenarios.length+1);
+  scenarios.push(s);
+  renderTable();
+  saveLocal(); // autosave
+}
+
+function renderTable() {
+  const tb = document.querySelector('#scenariosTable tbody');
+  tb.innerHTML = "";
+  scenarios.forEach((s,idx)=>{
+    const r = evaluate(s);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.name}</td>
+      <td class="right">${fmt(r.I)}</td>
+      <td class="right">${r.v}</td>
+      <td class="right">${fmt(r.sizeI)}</td>
+      <td class="right">${fmt(r.sizeV)}</td>
+      <td class="right">${fmt(r.finalSize)}</td>
+      <td class="right ${r.dropFinal> s.drop ? 'danger':''}">${fmt(r.dropFinal)}</td>
+      <td><button class="btn" onclick="removeScenario(${idx})">Remover</button></td>
+    `;
+    tb.appendChild(tr);
+  });
+  document.getElementById('countBadge').textContent = scenarios.length + (scenarios.length==1 ? " cenário" : " cenários");
+}
+
+function removeScenario(i){ scenarios.splice(i,1); renderTable(); saveLocal(); }
+
+// ======== Ampacity table ========
+function renderAmpacity() {
+  const tb = document.querySelector('#ampacityTable tbody');
+  tb.innerHTML = "";
+  ampacity.forEach((row, idx)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="number" step="0.25" value="${row.size}" onchange="editAmpacity(${idx}, 'size', this.value)"></td>
+      <td><input type="number" step="0.1" value="${row.I}" onchange="editAmpacity(${idx}, 'I', this.value)"></td>
+      <td><button class="btn" onclick="delAmpacity(${idx})">Del</button></td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+function editAmpacity(idx, key, val){
+  const v = parseFloat(val);
+  if (isFinite(v)) ampacity[idx][key] = v;
+  saveLocal();
+  renderLive();
+  renderTable();
+}
+function delAmpacity(idx){ ampacity.splice(idx,1); saveLocal(); renderAmpacity(); renderTable(); }
+function addAmpacity(){ ampacity.push({size:0.75, I:6}); renderAmpacity(); saveLocal(); }
+function resetAmpacity(){
+  ampacity = [
+    { size: 0.75, I: 6 },
+    { size: 1.0, I: 10 },
+    { size: 1.5, I: 15 },
+    { size: 2.5, I: 21 },
+    { size: 4.0, I: 28 },
+    { size: 6.0, I: 36 },
+    { size: 10.0, I: 50 },
+  ];
+  renderAmpacity(); saveLocal(); renderTable(); renderLive();
+}
+
+// ======== Persistência & Export ========
+const KEY = "pp_selector_state_v1";
+function saveLocal(){
+  const state = { scenarios, ampacity };
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+function loadLocal(){
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return;
+  try {
+    const st = JSON.parse(raw);
+    if (st.ampacity) ampacity = st.ampacity;
+    if (st.scenarios) scenarios = st.scenarios;
+  } catch(e){ console.warn(e); }
+  renderAmpacity(); renderTable(); renderLive();
+}
+function clearScenarios(){ scenarios = []; renderTable(); saveLocal(); }
+
+function exportCSV(){
+  const head = ["Nome","Potência[W]","Tensão[V]","Fases","FP","η","Distância[m]","Terra","ΔV_adm[%]","Corrente[A]","Vias","Bitola_I[mm2]","Bitola_ΔV[mm2]","Bitola_Final[mm2]","ΔV_Final[%]"];
+  const lines = [head.join(",")];
+  scenarios.forEach(s=>{
+    const r = evaluate(s);
+    const line = [
+      `"${s.name}"`, s.power, s.voltage, s.phases, s.pf, s.eff, s.distance,
+      s.usePE ? "S":"N", s.drop, r.I.toFixed(3), r.v, r.sizeI, r.sizeV, r.finalSize, r.dropFinal.toFixed(2)
+    ].join(",");
+    lines.push(line);
+  });
+  const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "PPSelector_Export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ======== Live updates ========
+['name','phases','power','voltage','pf','eff','distance','drop','usePE'].forEach(id=>{
+  document.addEventListener('input', e=>{ if(e.target && e.target.id===id) renderLive(); }, true);
+  document.addEventListener('change', e=>{ if(e.target && e.target.id===id) renderLive(); }, true);
+});
+
+renderAmpacity();
+renderTable();
+renderLive();
+loadLocal();
+
+// ======== PWA ========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+</script>
+</body>
+</html>
