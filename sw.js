@@ -1,5 +1,5 @@
-const CACHE = 'riviera-v2';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './data/project.json', './manifest.webmanifest', './cabos.html'];
+const CACHE = 'riviera-v3-mobile';
+const ASSETS = ['./', './index.html', './styles.css', './app.js', './data/project.json', './manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

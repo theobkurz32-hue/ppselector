@@ -1,6 +1,6 @@
 # N14 Riviera · Gestão da obra
 
-Site estático em português convertido de `N14_Riviera_Orcamento_Gantt_Revisado.xlsx`. Inclui visão geral, orçamento, planejamento Gantt/lista, quantitativos e premissas. A calculadora anterior continua em `cabos.html`.
+Site estático em português convertido de `N14_Riviera_Orcamento_Gantt_Revisado.xlsx`. Inclui visão geral, orçamento, planejamento Gantt/lista, quantitativos e premissas. Interface adaptada para iPhone, com navegação inferior, cartões de serviços e gráficos interativos.
 
 ## Executar
 
@@ -45,3 +45,17 @@ python3 scripts/import_workbook.py
 ```
 
 A importação exige `openpyxl`. As fórmulas do modelo são implementadas em `app.js`; o script usa os valores em cache do Excel para importar metadados e comparar a linha-base. Não modifica o Excel original.
+
+## Interface móvel
+
+No iPhone, as cinco seções ficam na navegação inferior, com respeito à área segura do aparelho. Orçamento, insumos e planejamento em lista usam cartões; o Gantt continua disponível por seleção. Campos de formulário têm fonte de 16 px para evitar zoom automático no Safari e a edição abre em painel inferior. A fonte usa a família do sistema (San Francisco nos dispositivos Apple), sem serifas.
+
+Na visão geral, arraste o controle abaixo da curva S para consultar cada semana. Toque nas barras mensais para consultar os valores; a faixa de meses permite rolagem horizontal. Os dados locais e o formato de backup foram preservados nesta atualização.
+
+Com o servidor ativo, valide a navegação e as interações por toque:
+
+```sh
+python3 scripts/mobile_test.py
+```
+
+Os testes foram executados em Chromium com telas de 375, 390 e 430 px. O teste executa também em WebKit se esse runtime estiver instalado; no ambiente atual ele não está disponível. Não foi realizada validação em um iPhone físico.
