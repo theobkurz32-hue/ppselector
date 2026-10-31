@@ -4,8 +4,8 @@
   "lang": "pt-BR",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f6f7f3",
-  "theme_color": "#173e35",
+  "background_color": "#090909",
+  "theme_color": "#090909",
   "description": "Orçamento e planejamento da obra N14 Riviera",
   "icons": []
 }

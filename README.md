@@ -12,19 +12,19 @@ python3 -m http.server 8000 --bind 127.0.0.1
 
 Acesse a porta 8000 em seu ambiente local. Não abra o HTML diretamente pelo protocolo `file:`: os dados são carregados por HTTP. Não há dependências de produção, build, banco ou credenciais.
 
-Para disponibilizar na internet, publique esta pasta em uma hospedagem estática com HTTPS (por exemplo, GitHub Pages). O site ainda não foi publicado por este projeto. A planilha e todos os dados incluídos ficarão acessíveis a quem tiver acesso à hospedagem; para acesso restrito, use uma hospedagem com autenticação. O service worker funciona em HTTPS ou loopback.
+Para disponibilizar na internet, publique esta pasta em uma hospedagem estática com HTTPS (por exemplo, GitHub Pages). Os dados incluídos ficarão acessíveis a quem tiver acesso à hospedagem; para acesso restrito, use uma hospedagem com autenticação. O service worker funciona em HTTPS ou loopback.
 
 ## Dados e comportamento
 
 - Linha-base: 19 fases, 183 serviços, 383 insumos e 183 atividades; 289,33 m² e reserva de 8%.
 - Custo direto original: R$ 1.650.800,62; total com reserva: R$ 1.782.864,67.
 - Edite quantidade e preço em **Quantitativos**. Os custos por serviço, natureza, fase, total e área são recalculados a partir desses insumos. A quantidade de referência do serviço é preservada; não multiplica novamente os quantitativos detalhados.
-- Área e reserva são editáveis em **Orçamento**.
+- Área e reserva são editáveis em **Orçamento → Parâmetros do orçamento**.
 - Datas, progresso e predecessora de referência são editáveis em **Planejamento**. Datas não reagendam automaticamente outras atividades. Duração calculada de segunda a sexta, sem feriados.
 - A curva financeira e o desembolso mensal distribuem cada custo diretamente nos dias úteis da atividade; a curva física usa a média do avanço previsto dos pacotes. São recalculados no site, não imagens dos gráficos do Excel. Pode haver diferenças em relação aos valores em cache da planilha. Nenhuma despesa realizada é presumida.
 - Avanço real ponderado pelo custo dos serviços; status segue a lógica do arquivo: concluído, em andamento, atrasado ou não iniciado. Data atual no fuso de São Paulo.
 - Alterações são armazenadas em `localStorage` neste navegador e origem. Não há sincronização com Google Sheets ou entre usuários. Use **Backup** e **Restaurar** para guardar e transferir alterações; a restauração valida o arquivo e pede confirmação antes de substituir os dados.
-- CSV exporta a tabela filtrada da seção atual (na visão geral e premissas, exporta orçamento). O Excel original permanece disponível em **Planilha original** e não é reescrito pelas edições do site.
+- CSV exporta a lista filtrada da seção atual. A opção aparece apenas em Orçamento, Plano e Insumos. O Excel original permanece em `data/N14_Riviera_Original.xlsx` e não é reescrito pelas edições do site. O dashboard não mostra links de download ou exportação.
 - Os arquivos essenciais ficam em cache para funcionamento offline após o primeiro acesso. O download do Excel original exige conexão. Dados sensíveis não são enviados a serviços externos.
 - A aba Contratos original estava vazia. As ressalvas e fontes da planilha foram preservadas em **Premissas e fontes**.
 
@@ -48,7 +48,7 @@ A importação exige `openpyxl`. As fórmulas do modelo são implementadas em `a
 
 ## Interface móvel
 
-No iPhone, as cinco seções ficam na navegação inferior, com respeito à área segura do aparelho. Orçamento, insumos e planejamento em lista usam cartões; o Gantt continua disponível por seleção. Campos de formulário têm fonte de 16 px para evitar zoom automático no Safari e a edição abre em painel inferior. A fonte usa a família do sistema (San Francisco nos dispositivos Apple), sem serifas.
+No iPhone, as cinco seções ficam na navegação inferior, com respeito à área segura do aparelho. Orçamento, insumos e planejamento em lista usam linhas compactas com detalhes expansíveis. O planejamento abre no Gantt, com barras contínuas, rótulos fixos e escalas de meses ou semanas. Campos de formulário têm fonte de 16 px para evitar zoom automático no Safari e a edição abre em painel inferior. A fonte usa a família do sistema (San Francisco nos dispositivos Apple), sem serifas. O tema é escuro e monocromático; linhas sólidas e tracejadas distinguem as séries física e financeira. As barras de custos por fase e por natureza compartilham a mesma apresentação.
 
 Na visão geral, arraste o controle abaixo da curva S para consultar cada semana. Toque nas barras mensais para consultar os valores; a faixa de meses permite rolagem horizontal. Os dados locais e o formato de backup foram preservados nesta atualização.
 
@@ -59,3 +59,5 @@ python3 scripts/mobile_test.py
 ```
 
 Os testes foram executados em Chromium com telas de 375, 390 e 430 px. O teste executa também em WebKit se esse runtime estiver instalado; no ambiente atual ele não está disponível. Não foi realizada validação em um iPhone físico.
+
+Premissas e fontes são apresentadas em tópicos expansíveis, preservando integralmente o conteúdo original. A curva S tem um marcador sincronizado com a semana selecionada. As alterações visuais mantêm o formato de armazenamento e backup, sem apagar os dados locais existentes.
