@@ -16,6 +16,12 @@ services:
         value: 3.12.14
       - key: RIVIERA_DB_PATH
         value: /var/data/riviera.sqlite3
+      - key: RIVIERA_BACKUP_DIR
+        value: /var/data/backups
+      - key: RIVIERA_BACKUP_INTERVAL_SECONDS
+        value: 86400
+      - key: RIVIERA_BACKUP_KEEP
+        value: 7
       - key: RIVIERA_ADMIN_USER
         sync: false
       - key: RIVIERA_ADMIN_PIN

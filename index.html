@@ -1,42 +1,203 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>N14 Riviera · Gestão da obra</title>
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#090909"><meta name="description" content="Orçamento, planejamento e acompanhamento da obra N14 Riviera.">
-<link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css?v=7">
-<script src="shared.js?v=7" defer></script>
-<script src="app.js?v=7" defer></script>
-</head>
-<body>
-<aside class="sidebar">
-<a class="brand" href="#resumo"><span class="brand-mark">N<span>14</span></span><span>RIVIERA<small>GESTÃO DA OBRA</small></span></a>
-<div class="nav-label">ÁREA DE TRABALHO</div>
-<nav aria-label="Navegação principal">
-<a href="#resumo" data-view="resumo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="nav-text"><span class="desktop-label">Visão geral</span><span class="mobile-label">Início</span></span></a>
-<a href="#orcamento" data-view="orcamento"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span class="nav-text">Orçamento</span></a>
-<a href="#planejamento" data-view="planejamento"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18M7 14h4m2 3h4"/></svg><span class="nav-text"><span class="desktop-label">Planejamento</span><span class="mobile-label">Plano</span></span></a>
-<a href="#quantitativos" data-view="quantitativos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg><span class="nav-text"><span class="desktop-label">Quantitativos</span><span class="mobile-label">Insumos</span></span></a>
-<a href="#premissas" data-view="premissas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><span class="nav-text"><span class="desktop-label">Premissas e fontes</span><span class="mobile-label">Premissas</span></span></a>
-</nav>
-<div class="sidebar-bottom"><div class="project-dot"></div>Projeto residencial<small>N14 Riviera · 289,33 m²</small></div>
-</aside>
-<div class="main-wrap">
-<header class="topbar"><span>Projetos <span class="slash">/</span> <b>N14 Riviera</b></span><div><span class="saved" id="saveState">● Dados locais</span><button id="backup" class="button subtle">↓ Backup</button><button id="restore" class="button subtle">↑ Restaurar</button><input type="file" id="backupFile" accept="application/json,.json" hidden></div></header>
-<main>
-<div id="loading" role="status">Carregando dados da planilha…</div>
-<div id="app" hidden>
-<section id="overviewIntro" class="overview-intro" aria-label="Como usar o painel">
-<p>Seja bem-vindo ao dashboard da sua obra! Aqui você acompanha os custos e o andamento da obra em um só lugar. Vá em <a href="#orcamento">Orçamento</a> para consultar os valores por fase, em <a href="#planejamento">Plano</a> para explorar o cronograma e o Gantt, e em <a href="#quantitativos">Insumos</a> para conferir quantidades e preços. Em <a href="#premissas">Premissas</a>, veja os critérios utilizados.</p>
-<p class="intro-transition">Agora, confira a visão geral da obra abaixo.</p>
-</section>
-<section class="page-heading"><div><div class="eyebrow">N14 RIVIERA / CONTROLE EXECUTIVO</div><h1 id="viewTitle">Visão geral da obra</h1><p id="viewDescription">Do planejamento à entrega, todos os números no mesmo lugar.</p></div><div class="heading-actions"><button id="export" class="button primary">Exportar CSV ↗</button></div></section>
-<div id="content"></div>
-<footer>N14 Riviera <span>Orçamento e planejamento da obra</span></footer>
-</div>
-</main>
-</div>
-<div id="toast" role="status" aria-live="polite"></div>
-<dialog id="editor"><form id="editForm"><div class="dialog-top"><div><div class="eyebrow" id="editCode"></div><h2 id="editTitle"></h2></div><button type="button" id="closeEditor" class="icon-button" aria-label="Fechar">×</button></div><div id="editFields"></div><div class="dialog-actions"><button type="button" id="cancelEditor" class="button">Cancelar</button><button class="button primary" type="submit">Salvar alterações</button></div></form></dialog>
-</body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>N14 Riviera · Gestão da obra</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#090909" />
+    <meta
+      name="description"
+      content="Orçamento, planejamento e acompanhamento da obra N14 Riviera."
+    />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css?v=8" />
+    <script src="domain.js?v=8" defer></script>
+    <script src="shared.js?v=8" defer></script>
+    <script src="app.js?v=8" defer></script>
+  </head>
+  <body>
+    <a href="#mainContent" class="skip-link">Pular para o conteúdo</a>
+    <aside class="sidebar">
+      <a class="brand" href="#resumo"
+        ><span class="brand-mark">N<span>14</span></span
+        ><span>RIVIERA<small>GESTÃO DA OBRA</small></span></a
+      >
+      <div class="nav-label">ÁREA DE TRABALHO</div>
+      <nav aria-label="Navegação principal">
+        <a href="#resumo" data-view="resumo"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" /></svg
+          ><span class="nav-text"
+            ><span class="desktop-label">Visão geral</span
+            ><span class="mobile-label">Início</span></span
+          ></a
+        >
+        <a href="#orcamento" data-view="orcamento"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="3" width="14" height="18" rx="2" />
+            <path d="M9 8h6M9 12h6M9 16h3" /></svg
+          ><span class="nav-text">Orçamento</span></a
+        >
+        <a href="#planejamento" data-view="planejamento"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M7 3v4m10-4v4M3 10h18M7 14h4m2 3h4" /></svg
+          ><span class="nav-text"
+            ><span class="desktop-label">Planejamento</span
+            ><span class="mobile-label">Plano</span></span
+          ></a
+        >
+        <a href="#quantitativos" data-view="quantitativos"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg
+          ><span class="nav-text"
+            ><span class="desktop-label">Quantitativos</span
+            ><span class="mobile-label">Insumos</span></span
+          ></a
+        >
+        <a href="#premissas" data-view="premissas"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v6m0-10v1" /></svg
+          ><span class="nav-text"
+            ><span class="desktop-label">Premissas e fontes</span
+            ><span class="mobile-label">Premissas</span></span
+          ></a
+        >
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="project-dot"></div>
+        Projeto residencial<small>N14 Riviera · 289,33 m²</small>
+      </div>
+    </aside>
+    <div class="main-wrap">
+      <header class="topbar">
+        <span>Projetos <span class="slash">/</span> <b>N14 Riviera</b></span>
+        <div>
+          <span class="saved" id="saveState">● Dados locais</span
+          ><button id="backup" class="button subtle">↓ Backup</button
+          ><button id="restore" class="button subtle">↑ Restaurar</button
+          ><input
+            type="file"
+            id="backupFile"
+            accept="application/json,.json"
+            hidden
+          />
+        </div>
+      </header>
+      <main id="mainContent" tabindex="-1">
+        <div id="loading" role="status">Carregando dados da planilha…</div>
+        <div id="app" hidden>
+          <div
+            id="appStatus"
+            class="status-banner"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+          <section
+            id="overviewIntro"
+            class="overview-intro"
+            aria-label="Como usar o painel"
+          >
+            <p>
+              Seja bem-vindo ao dashboard da sua obra! Aqui você acompanha os
+              custos e o andamento da obra em um só lugar. Vá em
+              <a href="#orcamento">Orçamento</a> para consultar os valores por
+              fase, em <a href="#planejamento">Plano</a> para explorar o
+              cronograma e o Gantt, e em
+              <a href="#quantitativos">Insumos</a> para conferir quantidades e
+              preços. Em <a href="#premissas">Premissas</a>, veja os critérios
+              utilizados.
+            </p>
+            <p class="intro-transition">
+              Agora, confira a visão geral da obra abaixo.
+            </p>
+          </section>
+          <section class="page-heading">
+            <div>
+              <div class="eyebrow">N14 RIVIERA / CONTROLE EXECUTIVO</div>
+              <h1 id="viewTitle" tabindex="-1">Visão geral da obra</h1>
+              <p id="viewDescription">
+                Do planejamento à entrega, todos os números no mesmo lugar.
+              </p>
+            </div>
+            <div class="heading-actions">
+              <button id="export" class="button primary">
+                Exportar CSV ↗
+              </button>
+            </div>
+          </section>
+          <div id="content"></div>
+          <footer>
+            N14 Riviera <span>Orçamento e planejamento da obra</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <dialog id="editor" aria-labelledby="editTitle">
+      <form id="editForm">
+        <div class="dialog-top">
+          <div>
+            <div class="eyebrow" id="editCode"></div>
+            <h2 id="editTitle"></h2>
+          </div>
+          <button
+            type="button"
+            id="closeEditor"
+            class="icon-button"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+        </div>
+        <div id="editFields"></div>
+        <div class="dialog-actions">
+          <button type="button" id="cancelEditor" class="button">
+            Cancelar</button
+          ><button class="button primary" type="submit">
+            Salvar alterações
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="expenseDialog" aria-labelledby="expenseTitle">
+      <form id="expenseForm" data-dirty-scope="expense">
+        <div class="dialog-top">
+          <div>
+            <div class="eyebrow">CONTROLE FINANCEIRO</div>
+            <h2 id="expenseTitle">Despesa da obra</h2>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            id="closeExpense"
+            aria-label="Fechar despesa"
+          >
+            ×
+          </button>
+        </div>
+        <div id="expenseFields"></div>
+        <div class="dialog-actions">
+          <button type="button" id="cancelExpense" class="button">
+            Cancelar</button
+          ><button type="submit" class="button primary">Salvar despesa</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

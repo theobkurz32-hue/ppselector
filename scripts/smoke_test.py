@@ -8,9 +8,9 @@ def open_phase(page):
 
 
 with sync_playwright() as p:
-    browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+    browser=p.chromium.launch(**({'executable_path':'/usr/bin/chromium'} if __import__('os').path.exists('/usr/bin/chromium') else {}),headless=True,args=['--no-sandbox'])
     context=browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
-    page=context.new_page();errors=[]
+    page=context.new_page();errors=[];page.on('dialog',lambda d:d.accept())
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto('http://127.0.0.1:8000/');page.locator('#app').wait_for(state='visible')
     text=page.locator('#content').inner_text().replace('\xa0',' ')
@@ -41,8 +41,8 @@ with sync_playwright() as p:
     page.locator('.settings-panel > summary').click();page.locator('#reserve').fill('10');page.locator('#saveSettings').click()
     assert '1.815.946,79' in page.locator('.section-summary').inner_text()
     page.locator('#search').fill('01.02');open_phase(page);page.locator('.budget-row > summary').click()
-    assert 'Terceiros' in page.locator('.row-detail').inner_text()
-    assert '100,00' in page.locator('.row-detail').inner_text()
+    assert 'Terceiros' in page.locator('.compact-row .row-detail').inner_text()
+    assert '100,00' in page.locator('.compact-row .row-detail').inner_text()
     page.locator('[data-service="01.02"]').click();expect(page.locator('.resource-row')).to_have_count(1)
     expect(page.locator('#search')).to_have_value('01.02')
     page.locator('nav [data-view="planejamento"]').click();expect(page.locator('.gantt-row')).to_have_count(183)
@@ -60,7 +60,7 @@ with sync_playwright() as p:
     assert 'Concluído' in open(dl.value.path(),encoding='utf-8-sig').read()
     with page.expect_download() as dl:page.locator('#backup').click()
     path=dl.value.path();backup=json.load(open(path));assert backup['resources'][1]['price']==100
-    page.on('dialog',lambda d:d.accept());page.locator('#backupFile').set_input_files(path)
+    page.locator('#backupFile').set_input_files(path)
     expect(page.locator('#toast')).to_contain_text('Backup restaurado')
     page.locator('nav [data-view="premissas"]').click();expect(page.locator('.premise-row')).to_have_count(len(backup['notes']))
     page.locator('.premise-row > summary').first.click();assert page.locator('.premise-row .row-detail').first.is_visible()

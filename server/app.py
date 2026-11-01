@@ -1,12 +1,13 @@
 """Single-project shared server. SQLite requires a persistent local volume, one instance."""
-from contextlib import contextmanager
-from datetime import date, timedelta
+from contextlib import asynccontextmanager, contextmanager, suppress
 from pathlib import Path
 import copy
+import asyncio
+from datetime import datetime, timezone
+import logging
 import hashlib
 import hmac
 import json
-import math
 import os
 import re
 import secrets
@@ -16,6 +17,9 @@ import time
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt, StrictStr
+
+from server.model import canonical_project, changes, migrate_project
+from server.backups import snapshot_database
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLES = {'reader', 'editor', 'admin'}
@@ -62,64 +66,49 @@ class ProjectUpdate(BaseModel):
     data: dict
 
 
-def canonical_project(candidate, baseline):
-    """Allow only supported editable fields, never client-supplied permissions or markup."""
-    result = copy.deepcopy(baseline)
-    def numeric(value, lower, upper):
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not lower <= value <= upper:
-            raise HTTPException(422, 'Valor numérico fora do intervalo permitido.')
-        return value
-    if candidate.get('version') != 1 or candidate.get('project') != baseline['project']:
-        raise HTTPException(422, 'Backup ou projeto incompatível.')
-    result['area'] = numeric(candidate.get('area'), .01, 10000000)
-    result['reserve'] = numeric(candidate.get('reserve'), 0, 1)
-    for field in ('resources', 'tasks'):
-        rows = candidate.get(field)
-        if not isinstance(rows, list) or len(rows) != len(baseline[field]):
-            raise HTTPException(422, 'Estrutura do projeto incompatível.')
-        for row, original, target in zip(rows, baseline[field], result[field]):
-            if not isinstance(row, dict) or row.get('id') != original['id']:
-                raise HTTPException(422, 'Identificador de item inválido.')
-            if field == 'resources':
-                if any(row.get(key) != original[key] for key in ('serviceId', 'phase', 'nature')):
-                    raise HTTPException(422, 'Vínculo do insumo inválido.')
-                target['quantity'] = numeric(row.get('quantity'), 0, 100000000)
-                target['price'] = numeric(row.get('price'), 0, 100000000)
-            else:
-                target['progress'] = numeric(row.get('progress'), 0, 1)
-                try:
-                    dates = [date.fromisoformat(row[key]) for key in ('start', 'end')]
-                    if any(str(d) != row[key] or not date(2000, 1, 1) <= d <= date(2100, 12, 31) for d, key in zip(dates, ('start', 'end'))) or dates[1] < dates[0]:
-                        raise ValueError()
-                except (KeyError, ValueError, TypeError):
-                    raise HTTPException(422, 'Período da atividade inválido.')
-                text = row.get('predecessor')
-                if not isinstance(text, str) or len(text) > 250:
-                    raise HTTPException(422, 'Predecessora inválida.')
-                target.update(start=row['start'], end=row['end'], predecessor=text)
-                target['duration'] = sum((dates[0] + timedelta(days=i)).weekday() < 5 for i in range((dates[1] - dates[0]).days + 1))
-    return result
-
-
-def changes(before, after):
-    changed = []
-    for key in ('area', 'reserve'):
-        if before[key] != after[key]:
-            changed.append({'item': 'project', 'field': key, 'before': before[key], 'after': after[key]})
-    for group, fields in [('resources', ('quantity', 'price')), ('tasks', ('start', 'end', 'progress', 'predecessor'))]:
-        for old, new in zip(before[group], after[group]):
-            for key in fields:
-                if old[key] != new[key]:
-                    changed.append({'item': new['id'], 'field': key, 'before': old[key], 'after': new[key]})
-    return changed
-
 
 def create_app(db_path=None, *, allow_http=None, bootstrap=None):
     db_path = Path(db_path or os.environ.get('RIVIERA_DB_PATH', '/tmp/riviera-development.sqlite3'))
     db_path.parent.mkdir(parents=True, exist_ok=True)
     allow_http = os.environ.get('RIVIERA_ALLOW_HTTP') == '1' if allow_http is None else allow_http
-    baseline = json.loads((ROOT / 'data/project.json').read_text())
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    source_template = json.loads((ROOT / 'data/project.json').read_text())
+    baseline = migrate_project(source_template, source_template)
+    backup_directory = os.environ.get('RIVIERA_BACKUP_DIR')
+    backup_interval = int(os.environ.get('RIVIERA_BACKUP_INTERVAL_SECONDS', '86400'))
+    backup_keep = int(os.environ.get('RIVIERA_BACKUP_KEEP', '7'))
+    if not 60 <= backup_interval <= 31 * 86400 or not 1 <= backup_keep <= 90:
+        raise RuntimeError('Intervalo ou retenção de backup automático inválido.')
+    logger = logging.getLogger('riviera.backup')
+
+    @asynccontextmanager
+    async def lifespan(application):
+        application.state.backups = {'enabled': bool(backup_directory), 'status': 'pending' if backup_directory else 'disabled', 'last_success': None}
+        async def run_snapshot():
+            try:
+                await asyncio.to_thread(snapshot_database, db_path, backup_directory, backup_keep)
+                application.state.backups.update(status='ok', last_success=datetime.now(timezone.utc).isoformat())
+            except Exception as error:
+                application.state.backups['status'] = 'error'
+                # Only the exception type is logged, never DB contents, credentials or arbitrary error text.
+                logger.error('Automatic database backup failed (%s)', type(error).__name__)
+        async def repeat():
+            while True:
+                await asyncio.sleep(backup_interval)
+                await run_snapshot()
+        task = None
+        if backup_directory:
+            await run_snapshot()
+            task = asyncio.create_task(repeat())
+        try:
+            yield
+        finally:
+            if task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app.state.backups = {'enabled': bool(backup_directory), 'status': 'pending' if backup_directory else 'disabled', 'last_success': None}
 
     @contextmanager
     def db():
@@ -145,6 +134,11 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
         CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), action TEXT NOT NULL, detail TEXT NOT NULL, created REAL NOT NULL);
         ''')
         c.execute('INSERT OR IGNORE INTO project(id,data) VALUES(1,?)', (json.dumps(baseline),))
+        stored = c.execute('SELECT data FROM project WHERE id=1').fetchone()
+        old_data = json.loads(stored['data'])
+        migrated = migrate_project(old_data, source_template)
+        if migrated != old_data:
+            c.execute('UPDATE project SET data=?,revision=revision+1 WHERE id=1', (json.dumps(migrated),))
         initial = bootstrap or (os.environ.get('RIVIERA_ADMIN_USER'), os.environ.get('RIVIERA_ADMIN_PIN'))
         if not c.execute('SELECT 1 FROM users LIMIT 1').fetchone() and not all(initial):
             raise RuntimeError('Primeiro acesso: configure RIVIERA_ADMIN_USER e RIVIERA_ADMIN_PIN nos segredos da hospedagem.')
@@ -216,14 +210,15 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
     def health():
         with db() as c:
             c.execute('SELECT 1').fetchone()
-        return {'status': 'ok'}
+        backup_status = dict(app.state.backups)
+        return {'status': 'degraded' if backup_status['status'] == 'error' else 'ok', 'backup': backup_status}
 
     @app.post('/api/login')
     def login(payload: Login, request: Request, response: Response):
         username = payload.username.lower()[:100]
         # Trust the socket client, never an arbitrary X-Forwarded-For header. Configure Uvicorn's proxy allowlist at deployment.
         ip = request.client.host if request.client else 'unknown'
-        keys = [('user:' + username, 5), ('ip:' + ip, 30)]
+        keys = [('user:' + username, 5), ('ip:' + ip, 30), ('volume:' + ip, 120)]
         now = time.time()
         with db() as c:
             c.execute('BEGIN IMMEDIATE')
@@ -233,9 +228,8 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
                 row = c.execute('SELECT * FROM attempts WHERE key=?', (key,)).fetchone()
                 if row and row['count'] >= limit:
                     raise HTTPException(429, 'Muitas tentativas. Aguarde 15 minutos para tentar novamente.', headers={'Retry-After': str(max(1, int(row['reset_at'] - now)))})
-            # Count every attempt, including unknown usernames, before expensive hashing.
-            for key, _ in keys:
-                c.execute('INSERT INTO attempts(key,count,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1', (key, now + 900))
+            # Bound total requests separately from authentication failures. Correct logins do not consume the failure allowance.
+            c.execute('INSERT INTO attempts(key,count,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1', ('volume:' + ip, now + 60))
             row = c.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
             salt = row['salt'] if row else '00' * 16
             candidate = pin_hash(payload.pin[:128], salt)
@@ -245,6 +239,9 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
                 token = secrets.token_urlsafe(32)
                 c.execute('INSERT INTO sessions VALUES(?,?,?)', (hashlib.sha256(token.encode()).hexdigest(), row['id'], now + SESSION_SECONDS))
                 audit(c, row['id'], 'login', {})
+            else:
+                for key in ('user:' + username, 'ip:' + ip):
+                    c.execute('INSERT INTO attempts(key,count,reset_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1', (key, now + 900))
         if not valid:
             raise HTTPException(401, 'Usuário ou PIN inválido.')
         response.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, httponly=True, secure=not allow_http, samesite='strict', path='/')
@@ -268,19 +265,27 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
             row = c.execute('SELECT * FROM project WHERE id=1').fetchone()
         return {'data': json.loads(row['data']), 'revision': row['revision']}
 
-    @app.put('/api/project')
-    def update_project(payload: ProjectUpdate, user=Depends(editor)):
-        data = canonical_project(payload.data, baseline)
+    def save_project(payload, user, *, restoring=False):
         with db() as c:
             c.execute('BEGIN IMMEDIATE')
             previous = c.execute('SELECT * FROM project WHERE id=1').fetchone()
             if payload.revision != previous['revision']:
                 raise HTTPException(409, 'Outra pessoa atualizou a obra. Atualize os dados antes de salvar novamente.')
-            diff = changes(json.loads(previous['data']), data)
+            previous_data = json.loads(previous['data'])
+            data = canonical_project(payload.data, source_template, existing=previous_data, allow_baseline=user['role'] == 'admin')
+            diff = changes(previous_data, data)
             revision = previous['revision'] + 1
             c.execute('UPDATE project SET data=?,revision=? WHERE id=1', (json.dumps(data), revision))
-            audit(c, user['id'], 'project.update', {'revision': revision, 'changes': diff})
+            audit(c, user['id'], 'project.restore' if restoring else 'project.update', {'revision': revision, 'changes': diff})
         return {'data': data, 'revision': revision}
+
+    @app.put('/api/project')
+    def update_project(payload: ProjectUpdate, user=Depends(editor)):
+        return save_project(payload, user)
+
+    @app.put('/api/project/restore')
+    def restore_project(payload: ProjectUpdate, user=Depends(admin)):
+        return save_project(payload, user, restoring=True)
 
     @app.get('/api/users')
     def users(user=Depends(admin)):
@@ -338,9 +343,9 @@ def create_app(db_path=None, *, allow_http=None, bootstrap=None):
     @app.get('/sw.js')
     def disabled_worker():
         # Migrate any old static-mode worker without retaining private responses.
-        return Response("self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k)))).then(()=>self.registration.unregister()).then(()=>self.clients.claim())));", media_type='application/javascript')
+        return Response("self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('riviera-'+encodeURIComponent(new URL(self.registration.scope).pathname)+'-')||[\"riviera-v2\",\"riviera-v3-mobile\",\"riviera-v4-monochrome\",\"riviera-v5-phase-groups\",\"riviera-v6-explicit-fold\",\"riviera-v7-shared-ready\",\"riviera-v8-management\"].includes(k)).map(k=>caches.delete(k)))).then(()=>self.registration.unregister()).then(()=>self.clients.claim())));", media_type='application/javascript')
 
-    allowed_static = {'index.html', 'app.js', 'shared.js', 'styles.css', 'manifest.webmanifest'}
+    allowed_static = {'index.html', 'app.js', 'shared.js', 'styles.css', 'manifest.webmanifest', 'domain.js', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'}
 
     @app.get('/')
     def index():

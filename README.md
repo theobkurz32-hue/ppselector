@@ -1,71 +1,100 @@
-# N14 Riviera · Gestão da obra
+# N14 Riviera · Orçamento, planejamento e acompanhamento
 
-Site estático em português convertido de `N14_Riviera_Orcamento_Gantt_Revisado.xlsx`. Inclui visão geral, orçamento, planejamento Gantt/lista, quantitativos e premissas. Interface adaptada para iPhone, com navegação inferior, cartões de serviços e gráficos interativos.
+Painel responsivo em português, convertido da planilha `N14_Riviera_Orcamento_Gantt_Revisado.xlsx`. Possui orçamento por fase, insumos editáveis, linha-base física, cronograma Gantt/lista, despesas e pagamentos e premissas. O tema é monocromático e as fases começam recolhidas.
 
-## Executar
+## Dois modos de uso
 
-Na pasta do repositório:
+| Modo | Executar | Onde os dados ficam |
+| --- | --- | --- |
+| Local/estático, incluindo GitHub Pages | `python3 -m http.server 8000 --bind 127.0.0.1` | Somente no navegador e origem atuais. Faça backup JSON. |
+| Compartilhado com login | `python3 -m server.run`, após configurar o ambiente | SQLite em disco persistente; permissões validadas no servidor. |
+
+**GitHub Pages não executa a API.** Enviar o código ao GitHub não ativa banco ou login. O modo aparece em aviso persistente na interface. O servidor compartilhado exige HTTPS e armazenamento persistente. Não há sincronização com Google Sheets.
+
+Veja [implantação no Render](docs/SHARED_HOSTING.md) e [operação, backup e recuperação](docs/BACKEND_OPERATIONS.md). A configuração `render.yaml` usa serviço pago e disco persistente; nenhum serviço pago é criado automaticamente. Usuário e PIN iniciais devem ser definidos nas configurações seguras do provedor. Não há conta de produção predefinida.
+
+## Conferência da origem
+
+- 19 fases, 183 serviços, 183 atividades, 383 insumos; área de 289,33 m².
+- Custo direto original: **R$ 1.650.800,62**.
+- Reserva original de 8%: **R$ 132.064,05**; total: **R$ 1.782.864,67**.
+- Preços zero e serviços de confiança baixa não foram preenchidos com valores inventados. O dashboard sinaliza essas pendências. A confirmação de projetos, medições e cotações cabe ao responsável pela obra.
+- Não há BDI/markup automático. O valor da reserva é separado do fluxo mensal de custos diretos.
+
+## Como usar
+
+**Orçamento → Serviços:** abra uma fase e um subitem para consultar sua composição. O botão de insumos permite editar quantidade e preço. Os parâmetros incluem área, reserva e feriados/paralisações, em datas `AAAA-MM-DD` separadas por vírgulas.
+
+**Orçamento → Despesas e pagamentos:** registre descrição, serviço, valor, data, vencimento e pagamento. É possível editar ou excluir lançamentos. O painel separa pago, a pagar e vencido. O saldo apresentado é orçamento estimado menos lançamentos, não saldo bancário. Pagamentos futuros não são aceitos como realizados. Não há integração bancária, fiscal ou contábil.
+
+**Linha-base física:** a migração preserva pesos e datas originais como referência provisória, com aprovação pendente. Uma aprovação explícita captura os custos atuais como pesos e as datas/calendário atuais como referência. Somente administrador pode aprovar no modo compartilhado; no modo local, o usuário do navegador pode fazê-lo.
+
+**Plano:** datas, progresso e dependências fim→início podem ser editados por código. A rotina de replanejamento, mediante confirmação, desloca para frente atividades não iniciadas, preservando a duração útil. Ela não muda atividades parcialmente executadas ou concluídas. Ciclos e referências inexistentes são rejeitados. Conflitos de sequência são sinalizados. Folgas e cadeia crítica são calculadas para os vínculos cadastrados; a rede original não possuía dependências estruturadas, apenas observações. A análise exige validação do responsável técnico; não é um CPM executivo aprovado automaticamente.
+
+**Leitor:** pode consultar inclusive os detalhes completos do Gantt em diálogo somente leitura. **Editor:** altera custos, calendário, progresso, datas, dependências e despesas. **Administrador:** também gerencia contas, aprova/redefine linha-base e restaura backup compartilhado.
+
+## Regras de cálculo
+
+As regras estão em `domain.js`, separadas da interface e cobertas por testes Node:
+
+- Valor do insumo: quantidade × preço, com arredondamento decimal **half-up por insumo, em centavos**. Totais são somados em centavos; isso elimina diferenças entre a soma das linhas exibidas e o total do serviço. Preços unitários podem manter precisão de origem; o arredondamento ocorre no total de cada insumo. A distribuição entre naturezas pode variar centavos em relação às somas não arredondadas do Excel, preservando o total direto original.
+- Reserva: arredondada em centavos sobre o custo direto. Total por área inclui a reserva.
+- Físico previsto e executado: usam os mesmos pesos fixos da linha-base. Alterar preços não altera o progresso. A aprovação de uma nova linha-base muda explicitamente os pesos; ela não ocorre durante uma edição comum.
+- Calendário da linha-base é um snapshot independente do calendário operacional; mudar um feriado operacional não reescreve silenciosamente a curva física aprovada.
+- Financeiro previsto: custo direto atual distribuído nos dias úteis de cada atividade, com os centavos residuais distribuídos de forma determinística. A reserva não é distribuída nessa curva.
+- Financeiro pago: pagamentos registrados por data efetiva, no mesmo denominador de custo direto. Valores acima de 100% são apresentados no detalhamento; a área gráfica tem escala limitada a 100%.
+- Físico real é o progresso atual informado; não é estimado a partir de pagamentos. O site não inventa histórico diário de medições que não foi registrado.
+- Atividades incompletas vencidas exibem atraso mesmo com progresso parcial. Os dias de atraso são corridos; a duração das atividades é útil.
+- Calendário operacional: segunda a sexta menos feriados/paralisações informados. Um período sem dia útil é rejeitado. Dados legados desse tipo são preservados durante migração, sinalizados e precisam ser corrigidos antes de novas gravações.
+
+## Migração e proteção dos dados
+
+O schema atual é v2. Backups v1 e edições locais anteriores continuam sendo lidos. A referência para novos pesos é a origem, não os preços já modificados no navegador. Antes da primeira migração local, uma cópia v1 é preservada em `riviera-project-backup-v1`; cada gravação mantém também a versão local anterior em `riviera-project-last-good`. Exporte backups JSON para não depender somente do armazenamento do navegador.
+
+O servidor migra o banco existente sem resetar contas ou alterações. Mudanças de versão incrementam a revisão. Conflitos de salvamento retornam 409, preservando o formulário para revisão. Atualizações em segundo plano respeitam rascunhos; descarte manual exige confirmação. Falha de rede ou armazenamento não é apresentada como sucesso.
+
+O backup JSON inclui projeto, linha-base, calendário e despesas. Contas, hashes e auditoria exigem backup completo SQLite. Na configuração Render, snapshots consistentes são feitos no início e diariamente, com retenção de sete; uma cópia externa privada deve ser configurada na hospedagem para proteger contra perda do volume.
+
+## Instalação e testes
+
+O site estático não tem dependências de produção ou build. O backend requer Python 3.12 e:
 
 ```sh
-python3 -m http.server 8000 --bind 127.0.0.1
+pip install -r server/requirements.txt
 ```
 
-Acesse a porta 8000 em seu ambiente local. Não abra o HTML diretamente pelo protocolo `file:`: os dados são carregados por HTTP. Não há dependências de produção, build, banco ou credenciais.
+As verificações são executadas pelo workflow `.github/workflows/quality.yml` em pushes e pull requests:
 
-Para disponibilizar na internet, publique esta pasta em uma hospedagem estática com HTTPS (por exemplo, GitHub Pages). Os dados incluídos ficarão acessíveis a quem tiver acesso à hospedagem; para acesso restrito, use uma hospedagem com autenticação. O service worker funciona em HTTPS ou loopback.
+```sh
+node --test tests/domain.test.js
+python3 -m unittest discover -s server -p 'test_*.py' -v
+```
 
-## Dados e comportamento
-
-- Linha-base: 19 fases, 183 serviços, 383 insumos e 183 atividades; 289,33 m² e reserva de 8%.
-- Custo direto original: R$ 1.650.800,62; total com reserva: R$ 1.782.864,67.
-- Edite quantidade e preço em **Quantitativos**. Os custos por serviço, natureza, fase, total e área são recalculados a partir desses insumos. A quantidade de referência do serviço é preservada; não multiplica novamente os quantitativos detalhados.
-- Área e reserva são editáveis em **Orçamento → Parâmetros do orçamento**.
-- Datas, progresso e predecessora de referência são editáveis em **Planejamento**. Datas não reagendam automaticamente outras atividades. Duração calculada de segunda a sexta, sem feriados.
-- A curva financeira e o desembolso mensal distribuem cada custo diretamente nos dias úteis da atividade; a curva física usa a média do avanço previsto dos pacotes. São recalculados no site, não imagens dos gráficos do Excel. Pode haver diferenças em relação aos valores em cache da planilha. Nenhuma despesa realizada é presumida.
-- Avanço real ponderado pelo custo dos serviços; status segue a lógica do arquivo: concluído, em andamento, atrasado ou não iniciado. Data atual no fuso de São Paulo.
-- Alterações são armazenadas em `localStorage` neste navegador e origem. Não há sincronização com Google Sheets ou entre usuários. Use **Backup** e **Restaurar** para guardar e transferir alterações; a restauração valida o arquivo e pede confirmação antes de substituir os dados.
-- CSV exporta a lista filtrada da seção atual. A opção aparece apenas em Orçamento, Plano e Insumos. O Excel original permanece em `data/N14_Riviera_Original.xlsx` e não é reescrito pelas edições do site. O dashboard não mostra links de download ou exportação.
-- Os arquivos essenciais ficam em cache para funcionamento offline após o primeiro acesso. O download do Excel original exige conexão. Dados sensíveis não são enviados a serviços externos.
-- A aba Contratos original estava vazia. As ressalvas e fontes da planilha foram preservadas em **Premissas e fontes**.
-
-## Verificação
-
-O ambiente de desenvolvimento possui Python Playwright e `/usr/bin/chromium`. Com o servidor em execução:
+Com o servidor estático ativo em 127.0.0.1:8000:
 
 ```sh
 python3 scripts/smoke_test.py
+python3 scripts/mobile_test.py
+python3 scripts/upgrade_browser_test.py
 ```
 
-O teste usa um navegador isolado e valida totais contra a planilha, edição, persistência, recálculo, reserva, filtros, progresso, datas inválidas, CSV, backup/restauração, premissas, offline e largura de tela móvel. Não altera os dados do navegador do usuário. Requer Playwright Python e Chromium; não são dependências do site.
+Os testes compartilhados iniciam/encerram seu próprio servidor temporário ou usam mocks:
 
-A planilha original está em `data/N14_Riviera_Original.xlsx`. Para regenerar a linha-base a partir dela (substitui `data/project.json`):
+```sh
+python3 scripts/shared_browser_test.py
+python3 scripts/shared_drafts_test.py
+```
+
+Testes de navegador exigem Python Playwright e Chromium; os de API usam `httpx`. No CI, o Playwright instala Chromium. No ambiente cloud, operações de socket/Chromium podem exigir execução fora do sandbox restrito. Não são usados usuários reais ou dados de produção.
+
+A interface foi verificada de 320 a 1440 px em Chromium, sem vazamento horizontal. Possui ícones PWA, navegação por teclado, ligação explícita de títulos de diálogos e alvos de toque ampliados. A validação em iPhone físico/Safari e VoiceOver ainda deve ser feita; esses testes não constituem certificação WCAG.
+
+## Reimportar a origem
+
+`data/N14_Riviera_Original.xlsx` é preservado. O comando abaixo, com `openpyxl`, substitui o JSON de referência; não deve ser usado para sobrescrever dados atuais de usuários:
 
 ```sh
 python3 scripts/import_workbook.py
 ```
 
-A importação exige `openpyxl`. As fórmulas do modelo são implementadas em `app.js`; o script usa os valores em cache do Excel para importar metadados e comparar a linha-base. Não modifica o Excel original.
-
-## Interface móvel
-
-No iPhone, as cinco seções ficam na navegação inferior, com respeito à área segura do aparelho. Orçamento, insumos e planejamento em lista usam linhas compactas com detalhes expansíveis. O planejamento abre no Gantt, com barras contínuas, rótulos fixos e escalas de meses ou semanas. Campos de formulário têm fonte de 16 px para evitar zoom automático no Safari e a edição abre em painel inferior. A fonte usa a família do sistema (San Francisco nos dispositivos Apple), sem serifas. O tema é escuro e monocromático; linhas sólidas e tracejadas distinguem as séries física e financeira. As barras de custos por fase e por natureza compartilham a mesma apresentação.
-
-Na visão geral, arraste o controle abaixo da curva S para consultar cada semana. Toque nas barras mensais para consultar os valores; a faixa de meses permite rolagem horizontal. Os dados locais e o formato de backup foram preservados nesta atualização.
-
-Com o servidor ativo, valide a navegação e as interações por toque:
-
-```sh
-python3 scripts/mobile_test.py
-```
-
-Os testes foram executados em Chromium com telas de 375, 390 e 430 px. O teste executa também em WebKit se esse runtime estiver instalado; no ambiente atual ele não está disponível. Não foi realizada validação em um iPhone físico.
-
-Premissas e fontes são apresentadas em tópicos expansíveis, preservando integralmente o conteúdo original. A curva S tem um marcador sincronizado com a semana selecionada. As alterações visuais mantêm o formato de armazenamento e backup, sem apagar os dados locais existentes.
-
-A abertura inclui uma orientação breve com links para as seções. Em Orçamento e Insumos, as 19 fases começam recolhidas; toque na fase para revelar seus subitens e no subitem para ver os detalhes. A busca e o filtro mostram as fases correspondentes, mas não abrem seus subitens. As fases só abrem por toque ou teclado na linha principal ou seta. Ao entrar na seção, filtrar ou salvar uma edição, elas voltam a ficar recolhidas. Os quatro indicadores do início têm dimensões padronizadas. O Gantt mantém sua apresentação anterior.
-
-## Banco compartilhado e controle de acesso
-
-Foi acrescentado um servidor com login por usuário e PIN de cinco números, perfis leitor/editor/administrador, banco SQLite persistente e gestão de contas. A configuração de hospedagem no Render está em `render.yaml`. **Esse modo exige um serviço web pago e disco persistente; o GitHub Pages não o executa.** A versão estática continua independente até a ativação da nova hospedagem.
-
-Siga [o roteiro completo de implantação, migração e testes](docs/SHARED_HOSTING.md). Cadastre o primeiro administrador nos segredos do provedor, nunca no código ou no chat. Não há conta ou PIN de produção predefinido.
+O Excel usa dados em cache na importação e não é reescrito pelas edições feitas no site.

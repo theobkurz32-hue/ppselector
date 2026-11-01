@@ -38,9 +38,9 @@ def check(browser,width,name):
             assert page.locator('.phase-group[open]').count()==0
             assert not page.locator('.compact-row > summary').is_visible()
             page.locator('.phase-heading .chevron').first.tap()
-            page.locator('.compact-row > summary').tap();assert page.locator('.row-detail').is_visible()
+            page.locator('.compact-row > summary').tap();assert page.locator('.compact-row .row-detail').is_visible()
             if section=='orcamento':
-                assert 'Terceiros' in page.locator('.row-detail').inner_text()
+                assert 'Terceiros' in page.locator('.compact-row .row-detail').inner_text()
                 if width==390:page.screenshot(path='/tmp/riviera-dark-budget-mobile.png',full_page=True)
             else:
                 page.locator('[data-resource]').tap();page.locator('[name="price"]').fill('125')
@@ -70,7 +70,7 @@ def check(browser,width,name):
     context.close();print(f'PASS {name} {width}px: dark theme, dashboard, intro links, touch charts, explicit phase expansion even after filtering; equal indicator dimensions, thin rows, expand details, resource editing, Gantt scroll/zoom, task progress, no page overflow/errors.')
 
 with sync_playwright() as p:
-    browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+    browser=p.chromium.launch(**({'executable_path':'/usr/bin/chromium'} if __import__('os').path.exists('/usr/bin/chromium') else {}),headless=True,args=['--no-sandbox'])
     for width in [375,390,430]:check(browser,width,'chromium')
     browser.close()
     if Path(p.webkit.executable_path).exists():

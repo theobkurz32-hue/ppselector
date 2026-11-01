@@ -1,0 +1,37 @@
+name: Quality checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install test runtimes
+        run: |
+          pip install -r server/requirements.txt httpx==0.28.1 playwright==1.62.0
+          python -m playwright install --with-deps chromium
+      - name: Domain and API regressions
+        run: |
+          node --test tests/domain.test.js
+          python -m unittest discover -s server -p 'test_*.py' -v
+      - name: Static and mobile regressions
+        run: |
+          python -m http.server 8000 --bind 127.0.0.1 > /tmp/riviera-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          python scripts/smoke_test.py
+          python scripts/mobile_test.py
+          python scripts/upgrade_browser_test.py
+      - name: Shared access and concurrency
+        run: |
+          python scripts/shared_browser_test.py
+          python scripts/shared_drafts_test.py

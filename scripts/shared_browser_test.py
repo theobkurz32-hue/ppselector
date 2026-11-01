@@ -23,7 +23,9 @@ def login(page,username,pin):
 
 def open_resource(page):
     page.locator('nav [data-view=quantitativos]').click()
+    expect(page.locator('body')).to_have_attribute('data-view','quantitativos')
     page.locator('#search').fill('01.02')
+    expect(page.locator('.resource-row')).to_have_count(1)
     page.locator('.phase-heading').click()
     page.locator('.resource-row > summary').click()
 
@@ -46,7 +48,7 @@ with tempfile.TemporaryDirectory() as tmp:
             except Exception:time.sleep(.05)
         else:raise RuntimeError('Test server did not become ready')
         with sync_playwright() as p:
-            browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+            browser=p.chromium.launch(**({'executable_path':'/usr/bin/chromium'} if __import__('os').path.exists('/usr/bin/chromium') else {}),headless=True,args=['--no-sandbox'])
             contexts=[browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True) for _ in range(3)]
             admin,editor,reader=[c.new_page() for c in contexts]
             errors=[]
@@ -61,10 +63,35 @@ with tempfile.TemporaryDirectory() as tmp:
             login(editor,'testeditor','05678');login(reader,'testreader','05678')
             assert not reader.locator('#manageUsers').count()
             assert not reader.locator('#restore').is_visible()
+            reader.locator('nav [data-view=planejamento]').click();reader.locator('.gantt').wait_for();reader.locator('#search').fill('01.02');reader.locator('.gantt-label').click()
+            expect(reader.locator('#editor')).to_be_visible()
+            assert reader.locator('[name=start]').is_disabled()
+            assert not reader.locator('#editForm [type=submit]').is_visible()
+            reader.locator('#cancelEditor').click()
             open_resource(reader)
             assert not reader.locator('[data-resource]').is_visible()
+            # A settings draft survives a remote revision and focus/poll refresh.
+            admin.locator('nav [data-view=orcamento]').click()
+            expect(admin.locator('body')).to_have_attribute('data-view','orcamento')
+            admin.locator('.settings-panel > summary').click()
+            admin.locator('#area').fill('999')
+            assert admin.evaluate('RivieraDirty.has()')
             edit_price(editor,150)
             expect(editor.locator('#toast')).to_contain_text('salvas para todos')
+            admin.evaluate('window.dispatchEvent(new Event("focus"))')
+            admin.wait_for_function('() => RivieraStore.pendingRevision !== null')
+            expect(admin.locator('#area')).to_have_value('999')
+            assert admin.locator('.settings-panel').get_attribute('open') is not None
+            expect(admin.locator('#syncStatus')).to_contain_text('rascunho foi preservado')
+            admin.once('dialog',lambda dialog:dialog.dismiss())
+            admin.locator('#refreshShared').click()
+            expect(admin.locator('#area')).to_have_value('999')
+            assert admin.evaluate('RivieraDirty.has()')
+            admin.once('dialog',lambda dialog:dialog.accept())
+            admin.locator('#refreshShared').click()
+            expect(admin.locator('#toast')).to_contain_text('Dados atualizados')
+            expect(admin.locator('#area')).to_have_value('289.33')
+            assert not admin.evaluate('RivieraDirty.has()')
             reader.locator('#refreshShared').click()
             expect(reader.locator('#toast')).to_contain_text('Dados atualizados')
             reader.locator('#search').fill('01.02');reader.locator('.phase-heading').click()
@@ -72,13 +99,14 @@ with tempfile.TemporaryDirectory() as tmp:
             assert not reader.locator('[data-resource]').is_visible()
             # Store last confirmed data separately: a rejected stale write must not remain visible.
             second_context=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
-            second=second_context.new_page();login(second,'testeditor','05678')
+            second=second_context.new_page();second.on('dialog',lambda d:d.accept());login(second,'testeditor','05678')
             edit_price(editor,200)
             open_resource(second);second.locator('[data-resource]').click();second.locator('[name=price]').fill('300')
             second.get_by_role('button',name='Salvar alterações').click()
             expect(second.locator('#toast')).to_contain_text('Outra pessoa atualizou')
-            expect(second.locator('#editor')).not_to_be_visible()
-            second.locator('.phase-heading').click()
+            expect(second.locator('#editor')).to_be_visible()
+            expect(second.locator('[name=price]')).to_have_value('300')
+            second.locator('#cancelEditor').click()
             assert '150,00' in second.locator('.resource-row > summary').inner_text()
             second.locator('#refreshShared').click();expect(second.locator('#toast')).to_contain_text('Dados atualizados')
             second.locator('.phase-heading').click();assert '200,00' in second.locator('.resource-row > summary').inner_text()
@@ -100,6 +128,6 @@ with tempfile.TemporaryDirectory() as tmp:
             second_context.close()
             for c in contexts:c.close()
             browser.close()
-            print('PASS shared mobile UI: login; admin creates/blocks accounts; readers cannot edit; edits shared across browsers; explicit refresh; stale-write conflict and rollback; session revocation; logout; no private localStorage; no page errors.')
+            print('PASS shared mobile UI: login; admin creates/blocks accounts; readers cannot edit; edits shared across browsers; explicit refresh; stale-write conflict preserves form; remote revision preserves settings draft; explicit discard confirmation; session revocation; logout; no private localStorage; no page errors.')
     finally:
         process.terminate();process.wait(timeout=10);log.close()

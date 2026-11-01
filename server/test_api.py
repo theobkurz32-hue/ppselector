@@ -114,6 +114,61 @@ class SharedApiTest(unittest.TestCase):
         self.assertEqual(self.admin.post('/api/login',content=b'x'*2_000_001).status_code,413)
         self.assertEqual(self.admin.post('/api/login',content=iter([b'x'*1_000_001,b'y'*1_000_001])).status_code,413)
 
+    def test_successful_logins_do_not_consume_ip_failure_limit(self):
+        for _ in range(35):
+            response = self.admin.post('/api/login', json={'username': 'owner', 'pin': '01234'})
+            self.assertEqual(response.status_code, 200, response.text)
+        # Failed attempts against many names still share the IP allowance.
+        for index in range(30):
+            response = self.admin.post('/api/login', json={'username': f'unknown{index}', 'pin': '11111'})
+            self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.admin.post('/api/login', json={'username': 'newname', 'pin': '11111'}).status_code, 429)
+
+    def test_baseline_admin_restore_and_expense_sharing(self):
+        from uuid import uuid4
+        editor, _ = self.new_user('editor2', 'editor')
+        before = editor.get('/api/project').json()
+        self.assertEqual(before['data']['version'], 2)
+        changed = copy.deepcopy(before)
+        changed['data']['baseline']['weights']['01.01'] = 10
+        self.assertEqual(editor.put('/api/project', json=changed).status_code, 403)
+        self.assertEqual(editor.put('/api/project/restore', json=before).status_code, 403)
+        changed = copy.deepcopy(before)
+        changed['data']['expenses'] = [{'id': str(uuid4()), 'serviceId':'01.01', 'name':'Taxa', 'date':'2026-11-03', 'dueDate':'2026-11-10', 'amount':3990, 'status':'paid', 'paidAt':'2020-11-07'}]
+        self.assertEqual(editor.put('/api/project', json=changed).status_code, 200)
+        saved = self.admin.get('/api/project').json()
+        saved['data']['baseline']['weights']['01.01'] = 10
+        saved['data']['baseline']['approvedAt'] = '2026-11-01T12:00:00Z'
+        self.assertEqual(self.admin.put('/api/project/restore', json=saved).status_code, 200)
+        latest = editor.get('/api/project').json()
+        self.assertEqual(latest['data']['baseline']['weights']['01.01'], 10)
+        self.assertEqual(latest['data']['expenses'][0]['amount'], 3990)
+        logs = self.admin.get('/api/audit').json()['entries']
+        self.assertTrue(any(entry['action'] == 'project.restore' for entry in logs))
+
+    def test_existing_v1_database_migrates_without_losing_user_work(self):
+        initial = self.admin.get('/api/project').json()['data']
+        initial['version'] = 1
+        initial['baseline'] = {'direct': 1650800.62, 'total': 1782864.67}
+        initial.pop('expenses', None)
+        initial.pop('calendar', None)
+        initial['resources'][0]['quantity'] = 9
+        initial['resources'][0]['price'] = 80
+        initial['tasks'][0]['progress'] = .5
+        with sqlite3.connect(self.path) as c:
+            import json
+            c.execute('UPDATE project SET data=? WHERE id=1', (json.dumps(initial),))
+        restarted = TestClient(create_app(self.path, allow_http=True), headers=HEADERS)
+        restarted.post('/api/login', json={'username':'owner','pin':'01234'})
+        migrated = restarted.get('/api/project').json()
+        self.assertEqual(migrated['data']['version'], 2)
+        self.assertEqual(migrated['data']['resources'][0]['quantity'], 9)
+        self.assertEqual(migrated['data']['resources'][0]['price'], 80)
+        self.assertEqual(migrated['data']['tasks'][0]['progress'], .5)
+        self.assertEqual(migrated['data']['expenses'], [])
+        self.assertEqual(migrated['revision'], 2)
+        restarted.close()
+
     def test_production_cookie(self):
         secure=TestClient(create_app(self.path,allow_http=False),base_url='https://testserver',headers=HEADERS)
         response=secure.post('/api/login',json={'username':'owner','pin':'01234'})
