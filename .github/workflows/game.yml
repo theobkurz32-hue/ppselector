@@ -1,0 +1,40 @@
+name: BR-293 game checks
+on:
+  push:
+    paths:
+      - 'estrada-do-pampa/**'
+      - 'jogo/**'
+      - 'scripts/stage_game.py'
+      - '.github/workflows/game.yml'
+  pull_request:
+    paths:
+      - 'estrada-do-pampa/**'
+      - 'jogo/**'
+      - 'scripts/stage_game.py'
+      - '.github/workflows/game.yml'
+permissions:
+  contents: read
+jobs:
+  game:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: estrada-do-pampa/package-lock.json
+      - name: Install game dependencies
+        working-directory: estrada-do-pampa
+        run: npm ci
+      - name: Check physics, traffic and GIS
+        working-directory: estrada-do-pampa
+        run: npm test
+      - name: Build static game
+        working-directory: estrada-do-pampa
+        run: npm run build
+      - name: Verify the published files match the source
+        run: |
+          python3 scripts/stage_game.py
+          git diff --exit-code -- jogo
+          test -z "$(git ls-files --others --exclude-standard jogo)"

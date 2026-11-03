@@ -1,0 +1,25 @@
+import {chromium} from '@playwright/test';
+import fs from 'node:fs';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
+const page=await browser.newPage({viewport:{width:1280,height:800}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await page.addInitScript(()=>localStorage.setItem('pampa-quality','LOW'));
+await page.goto(process.env.GAME_URL ?? 'http://localhost:5173/');await page.waitForFunction(()=>window.pampa,{timeout:120000});await page.waitForTimeout(2500);
+await page.screenshot({path:'artifacts/menu.png'});
+await page.locator('#new-journey').click();await page.waitForTimeout(500);
+await page.keyboard.down('w');await page.waitForFunction(()=>pampa.physics.speed>.2,{timeout:60000});await page.keyboard.up('w');
+// Exercise 10 simulation seconds deterministically, independent of the CI software GPU.
+await page.evaluate(()=>{for(let i=0;i<600;i++)pampa.simulate(1/60,{steer:0,throttle:1,brake:0,emergency:false,engineBrake:false,horn:false});});
+const accelerating=await page.evaluate(()=>({speed:pampa.physics.speed,s:pampa.s,gear:pampa.physics.gear,grade:pampa.route.sample(pampa.s).grade,render:pampa.renderer.info.render}));
+await page.screenshot({path:'artifacts/driving.png'});
+await page.keyboard.down('s');await page.waitForTimeout(1000);await page.keyboard.up('s');await page.evaluate(()=>{for(let i=0;i<360;i++)pampa.simulate(1/60,{steer:0,throttle:0,brake:1,emergency:false,engineBrake:false,horn:false});});const braking=await page.evaluate(()=>pampa.physics.speed);
+const steering=await page.evaluate(()=>{const before=pampa.lateral;pampa.physics.speed=8;pampa.headingError=0;for(let i=0;i<60;i++)pampa.simulate(1/60,{steer:.6,throttle:0,brake:0,emergency:false,engineBrake:false,horn:false});const moved=pampa.lateral-before;pampa.physics.speed=0;return moved;});
+await page.keyboard.press('c');await page.waitForTimeout(500);await page.evaluate(()=>{pampa.cameras.mode=0;pampa.cameras.reset();});await page.waitForTimeout(500);await page.screenshot({path:'artifacts/cabin.png'});
+await page.keyboard.press('F3');await page.selectOption('#dev-weather','HEAVY_RAIN');await page.locator('#dev-time').fill('22');await page.locator('#dev-time').dispatchEvent('input');await page.evaluate(()=>{pampa.atmosphere.wet=.8;pampa.atmosphere.cloud=.95;pampa.atmosphere.fog=.002;});await page.waitForTimeout(1500);await page.screenshot({path:'artifacts/night-rain.png'});
+const encounters=await page.evaluate(()=>{pampa.teleport(850/pampa.route.length);pampa.events.update(.1,pampa.s);pampa.animals.reset(0);pampa.animals.update(8,1260,10,false);const animalApproach=pampa.animals.state;pampa.animals.update(.1,1270,10,true);return {works:pampa.events.blockage!==null,animalApproach,animalHorn:pampa.animals.state};});
+await page.locator('[data-teleport="0.995"]').click();
+await page.evaluate(()=>{pampa.s=pampa.route.length-150;pampa.atmosphere.hour=15;pampa.atmosphere.setWeather('CLEAR');pampa.atmosphere.wet=0;pampa.atmosphere.cloud=.2;pampa.atmosphere.fog=.0002;pampa.cameras.mode=1;pampa.cameras.reset();});
+await page.waitForFunction(()=>pampa.access.group.children.length>0,{timeout:30000});await page.waitForTimeout(1000);await page.screenshot({path:'artifacts/access.png'});
+await page.evaluate(()=>{pampa.s=pampa.route.length-12.1;pampa.physics.speed=4;});await page.waitForTimeout(500);
+const complete=await page.locator('#finish-screen').isVisible();
+fs.writeFileSync('artifacts/browser-report.json',JSON.stringify({accelerating,braking,steering,encounters,complete,errors},null,2));console.log(JSON.stringify({accelerating,braking,steering,encounters,complete,errors},null,2));await browser.close();
+if(errors.length||!complete||accelerating.speed<1||braking>=accelerating.speed||Math.abs(steering)<.1||!encounters.works||encounters.animalHorn!=='FLEEING')process.exitCode=1;

@@ -98,3 +98,12 @@ python3 scripts/import_workbook.py
 ```
 
 O Excel usa dados em cache na importação e não é reescrito pelas edições feitas no site.
+
+
+## BR-293 · Estrada do Pampa
+
+O repositório também hospeda o jogo 3D **Estrada do Pampa**, de forma independente do painel Riviera.
+
+**[Jogar no navegador](https://theobkurz32-hue.github.io/ppselector/jogo/)** · [Código e instruções](estrada-do-pampa/README.md) · [Publicação e atualização](docs/GAME_HOSTING.md)
+
+O jogo inclui a viagem de aproximadamente 51,3 km da BR-293 ao acesso ERS-702 de Piratini, dados OSM e relevo locais, caminhão, tráfego, clima e eventos. Não depende da API do painel. As limitações de simulação e validação cartográfica estão documentadas na pasta do jogo.
