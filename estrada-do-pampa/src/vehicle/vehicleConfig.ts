@@ -10,6 +10,8 @@ export interface VehicleConfig {
   idleRpm: number;
   maxRpm: number;
   gearRatios: readonly number[];
+  reverseGearRatio: number;
+  reverseMaxSpeed: number;
   finalDrive: number;
   transmissionEfficiency: number;
   wheelRadius: number;
@@ -44,6 +46,8 @@ export const vehicleConfig: VehicleConfig = {
   idleRpm: 600,
   maxRpm: 2200,
   gearRatios: [14.94, 11.73, 9.04, 7.09, 5.54, 4.35, 3.44, 2.7, 2.08, 1.63, 1.27, 1],
+  reverseGearRatio: 12.1,
+  reverseMaxSpeed: 4,
   finalDrive: 3.08,
   transmissionEfficiency: 0.93,
   wheelRadius: 0.51,

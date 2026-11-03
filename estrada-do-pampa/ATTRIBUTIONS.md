@@ -4,7 +4,7 @@
 
 Os modelos do caminhão, carreta, veículos de tráfego, animais, sinalização, construções e vegetação são gerados por código neste projeto. As superfícies e texturas procedurais, a identidade visual “Estrada do Pampa” e a marca fictícia “PAMPA / Transportes Rodoviários” foram criadas para este jogo. Nenhum modelo comercial de caminhão ou logotipo de fabricante foi incorporado.
 
-O áudio é sintetizado por Web Audio API. Não foram incorporadas gravações de terceiros.
+O áudio é sintetizado por Web Audio API. Não foram incorporadas gravações de terceiros. O rádio reproduz uma composição instrumental original gerada por código, sem músicas comerciais ou emissoras externas.
 
 ## Bibliotecas
 

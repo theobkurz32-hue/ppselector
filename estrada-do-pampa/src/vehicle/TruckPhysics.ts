@@ -5,6 +5,8 @@ export interface DrivingInput {
   brake: number;
   emergency: boolean;
   engineBrake: boolean;
+  /** Selected travel direction; switching while moving first brakes to a stop. */
+  reverse?: boolean;
 }
 
 export interface RoadEnvironment {
@@ -35,6 +37,7 @@ export class TruckPhysics {
   totalFuelUsed = 0;
   engineTorque = 0;
   shifting = false;
+  directionChanging = false;
   forces = { drive: 0, drag: 0, rolling: 0, grade: 0, brake: 0, engineBrake: 0 };
   components = { engine: 0, tires: 0, body: 0, cargo: 0 };
 
@@ -56,13 +59,13 @@ export class TruckPhysics {
   }
 
   private wheelRpm(gear = this.gear): number {
-    const ratio = this.config.gearRatios[gear - 1];
-    return this.speed / (2 * Math.PI * this.config.wheelRadius) * 60 * ratio * this.config.finalDrive;
+    const ratio = gear === -1 ? this.config.reverseGearRatio : this.config.gearRatios[gear - 1];
+    return Math.abs(this.speed) / (2 * Math.PI * this.config.wheelRadius) * 60 * ratio * this.config.finalDrive;
   }
 
   private changeGear(next: number): void {
     if (next === this.gear) return;
-    this.gear = clamp(next, 1, this.config.gearRatios.length);
+    this.gear = next === -1 ? -1 : clamp(next, 1, this.config.gearRatios.length);
     this.shiftTime = 0.38;
     this.shiftCooldown = 1.0;
   }
@@ -71,7 +74,7 @@ export class TruckPhysics {
     this.shiftTime = Math.max(0, this.shiftTime - dt);
     this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
     this.shifting = this.shiftTime > 0;
-    if (this.shiftCooldown > 0 || this.shifting) return;
+    if (this.directionChanging || this.gear === -1 || this.shiftCooldown > 0 || this.shifting) return;
     const coupledRpm = this.wheelRpm();
     const uphillDemand = Math.max(0, grade) * this.config.mass / 38000;
     const upshiftRpm = throttle > 0.8 ? 1770 + Math.min(180, uphillDemand * 1600) : 1450;
@@ -88,8 +91,18 @@ export class TruckPhysics {
 
   private integrate(dt: number, input: DrivingInput, environment: RoadEnvironment): void {
     const mass = Math.max(8000, this.config.mass);
-    const throttleTarget = this.fuel > 0 && this.components.engine < 100 ? clamp(input.throttle, 0, 1) : 0;
-    const brake = input.emergency ? 1 : clamp(input.brake, 0, 1);
+    const requestedDirection = input.reverse ? -1 : 1;
+    const currentDirection = this.gear === -1 ? -1 : 1;
+    this.directionChanging = requestedDirection !== currentDirection;
+    if (this.directionChanging && Math.abs(this.speed) <= 0.25) {
+      this.speed = 0;
+      this.accelerator = 0;
+      this.changeGear(requestedDirection === -1 ? -1 : 1);
+      this.directionChanging = false;
+    }
+    const direction = this.gear === -1 ? -1 : 1;
+    const throttleTarget = !this.directionChanging && this.fuel > 0 && this.components.engine < 100 ? clamp(input.throttle, 0, 1) : 0;
+    const brake = Math.max(input.emergency ? 1 : clamp(input.brake, 0, 1), this.directionChanging ? 0.7 : 0);
     // Turbo/clutch engagement introduces a short, continuous torque response.
     this.accelerator += (throttleTarget - this.accelerator) * (1 - Math.exp(-dt * 3.5));
     const throttle = brake > 0.2 ? 0 : this.accelerator;
@@ -104,9 +117,10 @@ export class TruckPhysics {
     const friction = clamp(environment.friction, 0.08, 1.2);
     const tractionLimit = friction * normalForce * this.config.drivenAxleWeightFraction;
     this.engineTorque = engineTorqueAt(this.rpm, this.config.engineTorqueCurve) * throttle * (1 - this.components.engine * 0.006);
-    const ratio = this.config.gearRatios[this.gear - 1] * this.config.finalDrive;
+    const ratio = (this.gear === -1 ? this.config.reverseGearRatio : this.config.gearRatios[this.gear - 1]) * this.config.finalDrive;
     const torqueAtWheels = this.engineTorque * ratio * this.config.transmissionEfficiency / this.config.wheelRadius;
-    this.forces.drive = this.shifting || this.rpm >= this.config.maxRpm ? 0 : Math.min(torqueAtWheels, tractionLimit);
+    const reverseGovernor = this.gear === -1 ? clamp((this.config.reverseMaxSpeed - Math.abs(this.speed)) / 0.6, 0, 1) : 1;
+    this.forces.drive = this.shifting || this.engineTorque <= 0 || this.rpm >= this.config.maxRpm ? 0 : direction * Math.min(torqueAtWheels, tractionLimit) * reverseGovernor;
     this.forces.drag = 0.5 * AIR_DENSITY * this.config.Cd * this.config.frontalArea * this.speed ** 2;
     this.forces.rolling = this.config.Crr * (environment.offroad ? 4.2 : 1) * normalForce;
     this.forces.grade = mass * GRAVITY * Math.sin(theta);
@@ -115,15 +129,21 @@ export class TruckPhysics {
     const engineBrakingDemand = input.engineBrake ? this.config.engineBrakeForce * Math.min(1.45, this.rpm / 1500) : throttle < 0.02 ? 1800 : 0;
     this.forces.engineBrake = Math.min(engineBrakingDemand, tractionLimit);
     const stoppingForce = this.forces.rolling + this.forces.brake + this.forces.engineBrake;
-    const movingForce = this.forces.drive - this.forces.drag - this.forces.grade;
-    // A stopped vehicle remains held by static resistance; this forward-only model has no reverse gear.
-    const netForce = this.speed > 0.01 ? movingForce - stoppingForce : Math.max(0, movingForce - stoppingForce);
+    const motionSign = Math.sign(this.speed);
+    const movingForce = this.forces.drive - motionSign * this.forces.drag - this.forces.grade;
+    // Resistive forces oppose wheel travel. At standstill static friction removes
+    // only the available holding force, so gravity has the same sign in D and R.
+    const netForce = Math.abs(this.speed) > 0.01
+      ? movingForce - motionSign * stoppingForce
+      : Math.sign(movingForce) * Math.max(0, Math.abs(movingForce) - stoppingForce);
     const previousSpeed = this.speed;
-    this.speed = clamp(this.speed + netForce / mass * dt, 0, 45);
-    if (this.speed < 0.02 && movingForce <= stoppingForce) this.speed = 0;
+    let nextSpeed = this.speed + netForce / mass * dt;
+    if (motionSign !== 0 && Math.sign(nextSpeed) !== motionSign && Math.abs(movingForce) <= stoppingForce) nextSpeed = 0;
+    if (Math.abs(nextSpeed) < 0.02 && Math.abs(movingForce) <= stoppingForce) nextSpeed = 0;
+    this.speed = clamp(nextSpeed, -this.config.reverseMaxSpeed, 45);
     this.acceleration = (this.speed - previousSpeed) / dt;
-    this.distance += (previousSpeed + this.speed) * 0.5 * dt;
-    const brakePower = this.forces.brake * this.speed;
+    this.distance += (Math.abs(previousSpeed) + Math.abs(this.speed)) * 0.5 * dt;
+    const brakePower = this.forces.brake * Math.abs(this.speed);
     this.brakeTemperature += (brakePower / 250000 - (this.brakeTemperature - 25) * 0.008) * dt;
 
     // Brake-specific fuel consumption ~205 g/kWh, diesel density 0.832 kg/L.
@@ -132,7 +152,7 @@ export class TruckPhysics {
     const used = litersPerHour / 3600 * dt;
     this.totalFuelUsed += used;
     this.fuel = Math.max(0, this.fuel - used / this.config.fuelCapacity * 100);
-    this.consumption = this.speed > 1 ? litersPerHour / (this.speed * 3.6) * 100 : 0;
+    this.consumption = Math.abs(this.speed) > 1 ? litersPerHour / (Math.abs(this.speed) * 3.6) * 100 : 0;
   }
 
   impact(relativeSpeed: number): void {
@@ -155,6 +175,7 @@ export class TruckPhysics {
     this.brakeTemperature = 25;
     this.shiftTime = this.shiftCooldown = this.accelerator = 0;
     this.shifting = false;
+    this.directionChanging = false;
     this.components = { engine: 0, tires: 0, body: 0, cargo: 0 };
     this.forces = { drive: 0, drag: 0, rolling: 0, grade: 0, brake: 0, engineBrake: 0 };
   }

@@ -49,6 +49,27 @@ function roadTexture(kind: 'color' | 'normal' | 'roughness'): THREE.CanvasTextur
   return texture;
 }
 
+/** Neutral microtexture multiplies the green ground material without bleaching it. */
+function pastureTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d')!, data = ctx.createImageData(256, 256), rng = random(29371);
+  for (let i = 0; i < data.data.length; i += 4) {
+    const grain = rng() * 19 - 9;
+    data.data[i] = 226 + grain; data.data[i + 1] = 232 + grain;
+    data.data[i + 2] = 213 + grain; data.data[i + 3] = 255;
+  }
+  ctx.putImageData(data, 0, 0);
+  for (let i = 0; i < 1500; i++) {
+    const x = rng() * 256, y = rng() * 256;
+    ctx.strokeStyle = i % 3 ? 'rgba(105,128,71,.11)' : 'rgba(241,244,220,.15)';
+    ctx.lineWidth = .55; ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x + rng() * 3 - 1.5, y - 1 - rng() * 4); ctx.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = 4;
+  return texture;
+}
+
 function signTexture(lines: string[], background = '#195346'): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512; canvas.height = 256;
@@ -76,10 +97,10 @@ export class World {
   private readonly shoulder = new THREE.MeshStandardMaterial({ color: 0x666459, roughness: 0.98 });
   private readonly yellow = new THREE.MeshStandardMaterial({ color: 0xd8b853, roughness: 0.8 });
   private readonly white = new THREE.MeshStandardMaterial({ color: 0xd9dbca, roughness: 0.85 });
-  private readonly terrainMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: false });
+  private readonly terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x769653, vertexColors: true, roughness: 1, metalness: 0, flatShading: false });
   private readonly trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x62594a, roughness: 1 });
   private readonly leafMaterial = new THREE.MeshStandardMaterial({ color: 0x4a6040, roughness: 1 });
-  private readonly grassMaterial = new THREE.MeshStandardMaterial({ color: 0x858b54, side: THREE.DoubleSide, roughness: 1 });
+  private readonly grassMaterial = new THREE.MeshStandardMaterial({ color: 0x64883e, side: THREE.DoubleSide, roughness: 1 });
   private readonly timber = new THREE.MeshStandardMaterial({ color: 0x888573, roughness: 1 });
   private readonly metal = new THREE.MeshStandardMaterial({ color: 0x9a9a8e, metalness: 0.35, roughness: 0.65 });
   private readonly dark = new THREE.MeshStandardMaterial({ color: 0x393c35, roughness: 0.8 });
@@ -91,6 +112,9 @@ export class World {
   private lastQuality = '';
   private horizon?: Chunk;
   private horizonKey = '';
+  private horizonCoverage = '';
+  private horizonGeometry?: THREE.BufferGeometry;
+  private horizonCells: Array<{ key: string; indices: number[] }> = [];
   private readonly roadExclusions = new Map<string, Array<[number, number, number, number]>>();
 
   constructor(private readonly route: Route) {
@@ -99,6 +123,7 @@ export class World {
       roughnessMap: roadTexture('roughness'), normalScale: new THREE.Vector2(0.3, 0.3),
       roughness: 0.94, metalness: 0.015,
     });
+    this.terrainMaterial.map = pastureTexture();
     this.grassGeometry = new THREE.BufferGeometry();
     this.grassGeometry.setAttribute('position', new THREE.Float32BufferAttribute([
       -0.18, 0, 0, 0.18, 0, 0, 0.04, 0.65, 0, 0, 0, -0.18, 0, 0, 0.18, 0, 0.55, -0.03,
@@ -167,6 +192,7 @@ export class World {
       this.horizon = this.createHorizon(cx, cz, radius);
       this.horizonKey = horizonKey; this.group.add(this.horizon.group);
     }
+    this.updateHorizonCoverage();
     this.chunkCount = this.roads.size + this.terrains.size + 1;
   }
 
@@ -348,7 +374,7 @@ export class World {
       position.setXYZ(i, x, this.route.terrainHeight(x, z) - 0.08, z);
       const patch = (Math.sin(x * 0.013 + Math.cos(z * 0.009)) + Math.sin(z * 0.02 + x * 0.006)) * 0.5;
       const field = Math.sin(x * 0.0009 + z * 0.002) > 0.45;
-      color.set(field ? 0x858b51 : 0x737e4c);
+      color.set(field ? 0xe2e5d0 : 0xd4dfc1);
       color.multiplyScalar(0.92 + patch * 0.09); colors.push(color.r, color.g, color.b);
     }
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -367,7 +393,12 @@ export class World {
       }
       skirtIndices.push(first, first + 1, first + 2, first + 1, first + 3, first + 2);
     }
-    geometry.deleteAttribute('uv');
+    // PlaneGeometry's original normal buffer is too small after adding skirts.
+    // Reusing it makes strict mobile GPUs reject the entire terrain draw call.
+    geometry.deleteAttribute('normal');
+    const uvs: number[] = [];
+    for (let i = 0; i < skirtPositions.length; i += 3) uvs.push(skirtPositions[i] / 8, skirtPositions[i + 2] / 8);
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(skirtPositions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(skirtColors, 3));
     geometry.setIndex(skirtIndices); geometry.computeVertexNormals(); geometry.computeBoundingSphere(); geometries.push(geometry);
@@ -377,31 +408,46 @@ export class World {
   }
 
 
-  private createHorizon(cx: number, cz: number, nearRadius: number): Chunk {
-    const group = new THREE.Group(), positions: number[] = [], colors: number[] = [], indices: number[] = [];
+  private createHorizon(cx: number, cz: number, _nearRadius: number): Chunk {
+    const group = new THREE.Group(), positions: number[] = [], colors: number[] = [], uvs: number[] = [], indices: number[] = [];
+    this.horizonCells = []; this.horizonCoverage = '';
     const outerRadius = 12, grid = 256;
     const minX = (cx - outerRadius) * TERRAIN_CHUNK, minZ = (cz - outerRadius) * TERRAIN_CHUNK;
     const size = (outerRadius * 2 + 1) * TERRAIN_CHUNK, count = size / grid;
     for (let z = 0; z <= count; z++) for (let x = 0; x <= count; x++) {
       const px = minX + x * grid, pz = minZ + z * grid;
       positions.push(px, this.route.terrainHeight(px, pz) - 0.35, pz);
-      const color = new THREE.Color(0x77814f);
+      uvs.push(px / 8, pz / 8);
+      const color = new THREE.Color(0xd9e1c8);
       color.multiplyScalar(0.94 + Math.sin(px * 0.0015 + pz * 0.002) * 0.04);
       colors.push(color.r, color.g, color.b);
     }
     for (let z = 0; z < count; z++) for (let x = 0; x < count; x++) {
       const px = minX + (x + 0.5) * grid, pz = minZ + (z + 0.5) * grid;
-      if (px >= (cx - nearRadius) * TERRAIN_CHUNK && px < (cx + nearRadius + 1) * TERRAIN_CHUNK &&
-          pz >= (cz - nearRadius) * TERRAIN_CHUNK && pz < (cz + nearRadius + 1) * TERRAIN_CHUNK) continue;
       const a = z * (count + 1) + x, b = a + count + 1;
-      indices.push(a, b, a + 1, a + 1, b, b + 1);
+      const cellIndices = [a, b, a + 1, a + 1, b, b + 1];
+      this.horizonCells.push({ key: `${Math.floor(px / TERRAIN_CHUNK)}:${Math.floor(pz / TERRAIN_CHUNK)}`, indices: cellIndices });
+      indices.push(...cellIndices);
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setIndex(indices); geometry.computeVertexNormals();
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices); geometry.computeVertexNormals(); this.horizonGeometry = geometry;
     const mesh = new THREE.Mesh(geometry, this.terrainMaterial); group.add(mesh);
     return { group, geometries: [geometry] };
+  }
+
+  private updateHorizonCoverage(): void {
+    if (!this.horizonGeometry) return;
+    const coverage = [...this.terrains.keys()].sort().join('|');
+    if (coverage === this.horizonCoverage) return;
+    this.horizonCoverage = coverage;
+    const indices: number[] = [];
+    // A coarse green surface stays visible until each detailed chunk exists.
+    // Replacing indices avoids resampling the DEM while mobile streaming catches up.
+    for (const cell of this.horizonCells) if (!this.terrains.has(cell.key)) indices.push(...cell.indices);
+    this.horizonGeometry.setIndex(indices);
   }
 
   private closeToRoad(x: number, z: number, minimum: number): boolean {

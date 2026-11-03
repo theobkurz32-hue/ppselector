@@ -48,3 +48,37 @@ describe('Tráfego bidirecional', () => {
     expect(traffic.vehicles.length).toBe(22);
   });
 });
+
+
+describe('Resposta a impactos', () => {
+  it('conserva momento longitudinal e desvia o veículo leve em colisão frontal', () => {
+    const traffic = new Traffic(route); traffic.reset(10000);
+    for (const vehicle of traffic.vehicles) vehicle.active = false;
+    const car = traffic.vehicles[0];
+    Object.assign(car, { active: true, s: 10010, lateral: 1.8, direction: -1, speed: 20 });
+    const impact = traffic.resolveImpact(car.id, { s: 10000, lateral: 1.8, speed: 20, mass: 38000 });
+    expect(impact.energy).toBeGreaterThan(1000000);
+    expect(impact.playerSpeed).toBeGreaterThan(0);
+    expect(impact.playerSpeed).toBeLessThan(20);
+    expect(car.crashVelocity).toBeGreaterThan(0);
+    expect(car.crashed).toBe(true);
+    expect(car.damage).toBeGreaterThan(50);
+    const initialMomentum = 38000 * 20 - 1650 * 20;
+    expect(38000 * impact.playerSpeed + 1650 * car.crashVelocity).toBeCloseTo(initialMomentum, 5);
+    const start = car.lateral;
+    for(let i=0;i<180;i++)traffic.update(1/60, {s:10000,lateral:1.8,speed:0},12,0);
+    expect(Math.abs(car.lateral-start)).toBeGreaterThan(1);
+    expect(Math.abs(car.spin)).toBeGreaterThan(.1);
+  });
+
+  it('produz recuo e dano mesmo quando o caminhão estava parado', () => {
+    const traffic = new Traffic(route); traffic.reset(10000);
+    const car = traffic.vehicles[0];
+    Object.assign(car, {active:true,s:10010,lateral:1.8,direction:-1,speed:15});
+    const impact=traffic.resolveImpact(car.id,{s:10000,lateral:1.8,speed:0,mass:38000});
+    expect(impact.relativeSpeed).toBe(15);
+    expect(impact.playerSpeed).toBeLessThan(0);
+    expect(impact.energy).toBeGreaterThan(100000);
+    expect(car.damage).toBeGreaterThan(10);
+  });
+});

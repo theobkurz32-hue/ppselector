@@ -1,12 +1,12 @@
 # BR-293 · Estrada do Pampa
 
-Jogo de condução 3D para navegador, em português, com caminhão articulado e viagem de Pelotas ao entroncamento de acesso a Piratini, no Rio Grande do Sul. Esta é a **versão jogável 0.1**: um ponto de partida funcional para evoluir a simulação e a fidelidade regional.
+Jogo de condução 3D para navegador, em português, com caminhão articulado e viagem de Pelotas ao entroncamento de acesso a Piratini, no Rio Grande do Sul. Esta é a **versão jogável 0.2**: um ponto de partida funcional para evoluir a simulação e a fidelidade regional.
 
 A viagem usa escala física de **1 unidade = 1 metro**, com geometria rodoviária e elevação previamente processadas. Não há compressão de distância no modo atual. O destino é o **acesso rodoviário**, não o centro de Piratini. Consulte [DATA_SOURCES.md](DATA_SOURCES.md) para procedência, datas, processamento e limites da validação cartográfica.
 
 ## Executar
 
-Requisitos: Node.js 20.19+ ou 22.12+ e npm; navegador desktop atualizado com WebGL2 e aceleração gráfica. Chrome/Chromium, Edge e Firefox são os alvos iniciais. O navegador precisa permitir áudio após o clique de início.
+Requisitos: Node.js 20.19+ ou 22.12+ e npm; navegador atualizado com WebGL2 e aceleração gráfica. Chrome/Chromium, Edge e Firefox são os alvos iniciais. O navegador precisa permitir áudio após o clique de início.
 
 ```bash
 npm install
@@ -44,6 +44,10 @@ Há tráfego nos dois sentidos, animais que se aproximam pelo acostamento e obra
 | `Espaço` | Freio de emergência |
 | `B` | Freio motor enquanto pressionado |
 | `C` | Alternar câmera |
+| `V` | Câmera de cabine |
+| `R` | Alternar frente / ré; freia antes de engatar |
+| `U` | Ligar / desligar som |
+| `J` | Rádio instrumental |
 | `H` | Buzina enquanto pressionado |
 | `L` | Alternar faróis |
 | `Q` / `E` | Alternar seta esquerda / direita |
@@ -51,7 +55,7 @@ Há tráfego nos dois sentidos, animais que se aproximam pelo acostamento e obra
 | `M` | Abrir / fechar mapa |
 | `F3` | Abrir / fechar telemetria e ferramentas |
 
-Gamepad: analógico esquerdo para direção, gatilho direito para acelerar e esquerdo para frear. O mapeamento depende da API padrão do navegador. Há botões de direção na tela em larguras pequenas; a versão atual prioriza computador. Suporte específico a volantes ainda não foi implementado.
+Gamepad: analógico esquerdo para direção, gatilho direito para acelerar e esquerdo para frear. O mapeamento depende da API padrão do navegador. No celular, jogue na horizontal: direção à esquerda, pedais e seletor de ré à direita. Os botões Cabine, Câmeras, Som, Rádio e Tela ficam no canto superior direito. O modo vertical solicita girar o aparelho; tela cheia e bloqueio de orientação são tentados somente após um gesto e dependem do navegador. Suporte específico a volantes ainda não foi implementado.
 
 ## Testes e diagnóstico
 
@@ -142,11 +146,11 @@ A meta é fluidez em computadores intermediários. **Não há garantia de 60 FPS
 
 O progresso é salvo periodicamente e ao pausar/sair, usando `localStorage`. Inclui posição na rota, distância, combustível, dano, horário e pontuação. A qualidade gráfica também é persistida. O salvamento pertence ao navegador e à origem HTTP usados; limpar dados do site remove esse progresso. Não existe conta, servidor de salvamentos ou sincronização entre dispositivos.
 
-## Limitações da versão 0.1
+## Limitações da versão 0.2
 
 - É uma implementação inicial jogável, não uma reprodução fotorealista ou um simulador homologado. Não use a representação como navegação rodoviária ou informação sobre condições atuais de tráfego.
 - O renderer usa WebGL2. WebGPU e Rapier não estão integrados.
-- Contatos e colisões usam aproximações ao longo da rota e separação de veículos, sem solver completo de corpos rígidos. Não há deformação de carroceria, dano visual ou resposta avançada a capotamento.
+- Colisões usam impulso longitudinal por massa e aproximações ao longo da rota. Há desvio, giro e danos visuais simplificados, vidros trincados, fragmentos e tremor de câmera. Não há solver completo de corpos rígidos, soft-body ou capotamento avançado.
 - Articulação da carreta e balanço/suspensão são aproximações cinemáticas e visuais. Jackknife dinâmico completo e física lateral detalhada por pneu ficam para uma evolução.
 - Caminhão, veículos, animais, vegetação, texturas e construções usam geometria procedural. Não há fotogrametria regional ou biblioteca externa de modelos GLTF.
 - A estrada segue o eixo adquirido; larguras, acostamentos, marcações e elementos de sinalização são generalizados. A representação detalhada do acesso/rotatória depende do que foi adquirido e validado, conforme `DATA_SOURCES.md`.
@@ -156,9 +160,9 @@ O progresso é salvo periodicamente e ao pausar/sair, usando `localStorage`. Inc
 - Eventos de obras e bovinos têm espaçamento controlado e são exemplos de gameplay. Não existe ainda uma biblioteca completa de acidentes, Pare e Siga, espécies animais e ocorrências contextuais.
 - Sombras acompanham a luz solar numa área próxima; não há cascaded shadow maps. Neblina é aproximada por fog exponencial; nuvens e chuva não são simulações volumétricas físicas.
 - A posição solar usa latitude/longitude e uma declinação de primavera aproximada, sem calendário astronômico completo. O ciclo é acelerado, com duração configurável.
-- O áudio é sintetizado pela Web Audio API. Não há gravações reais de caminhão, espacialização completa de todos os emissores ou Doppler pleno.
+- O áudio é sintetizado em camadas pela Web Audio API, com diesel, turbo, pneus, vento, chuva, aves/insetos e tráfego estéreo com Doppler aproximado. O rádio toca uma composição instrumental original e opcional, sem stream externo. Não são gravações de campo nem espacialização física completa. Som requer volume do aparelho e uma interação inicial com a página.
 - Retrovisores são representações simplificadas; não há renderização independente de cena em cada espelho. Os controles e câmeras priorizam jogabilidade em navegador.
-- Não há marcha à ré, múltiplos caminhões selecionáveis, modo Quick Drive, remapeamento completo de controles ou suporte dedicado a volante nesta versão.
+- A marcha à ré é limitada a aproximadamente 14 km/h e só engata depois de frear. Múltiplos caminhões selecionáveis, Quick Drive, remapeamento completo e suporte dedicado a volante ficam para versões futuras.
 
 Para ampliar a rota, substitua ou acrescente datasets processados preservando o contrato de `Route`. Para calibrar o conjunto, altere `vehicleConfig.ts` e execute os testes antes de validar a resposta no navegador.
 
@@ -181,3 +185,16 @@ python3 scripts/gis/acquire.py --refresh
 Tiles DEM existentes são reutilizados. Para atualizar o raster, remova apenas os PNGs correspondentes em `scripts/gis/cache/dem/` e execute novamente com acesso à rede. O processador mantém o perfil distribuído até concluir a geração de novos arquivos. A versão não certifica quilometragem SNV nem equivalência da interseção ao projeto executivo atual.
 
 O acesso tem suas vias e alças renderizadas a partir da topologia local OSM em `src/world/Access.ts`. Essa representação continua sujeita à limitação de validação oficial descrita em `DATA_SOURCES.md`.
+
+
+## Mudanças da versão 0.2
+
+Interface de celular na horizontal com múltiplos toques, seletor de ré, cabine por botão e controles de som/rádio. Corrigidos buffers de normais e buracos de streaming que podiam deixar o terreno branco em GPUs móveis; terreno e grama usam verde do Pampa. Colisões têm impulso, dano visual, fragmentos e tremor. Veículos têm carrocerias arredondadas e rodas animadas. Bovinos têm patas articuladas, apoio aproximado dos cascos e passada ligada à distância. Os 35 testes cobrem física, ré, tráfego, impactos, dano, GIS e todos os níveis gráficos do terreno.
+
+Para repetir a validação de celular por emulação Chromium, com o jogo em execução:
+
+```bash
+GAME_URL=http://localhost:5173/ node scripts/mobile-check.mjs
+```
+
+O teste verifica múltiplos toques, ré/freio, botão de cabine, áudio ativo, rádio, impacto e dano visual, buffers de terreno, passada dos animais e aviso de orientação. Ele gera um relatório e capturas em `artifacts/mobile/`. A emulação não substitui testes em aparelhos físicos de diferentes GPUs.

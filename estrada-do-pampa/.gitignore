@@ -9,3 +9,5 @@ test-results/
 .DS_Store
 *.tsbuildinfo
 .npm-cache/
+
+artifacts/

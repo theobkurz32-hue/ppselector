@@ -45,6 +45,7 @@ export class TruckModel {
 
   constructor() {
     this.group.name = 'Caminhão rodoviário — seis eixos';
+    this.group.userData.windshield = {x:0,y:2.8,z:3.425,width:2.23,height:1.21};
     this.group.add(this.cabin);
     this.cabin.name = 'Cabine com interior';
     this.trailer.position.z = -1.2;
@@ -113,7 +114,7 @@ export class TruckModel {
     block(cab, paintMaterial, 0, 3.51, 1.98, 2.48, 0.2, 3.02);
     block(cab, paintMaterial, 0, 3.72, 1.65, 2.22, 0.25, 2.15);
     block(cab, darkMaterial, 0, 1.12, 3.55, 2.5, 0.26, 0.2);
-    block(cab, paintMaterial, 0, 1.55, 3.53, 2.45, 0.7, 0.1);
+    block(cab, paintMaterial, 0, 1.55, 3.53, 2.45, 0.7, 0.1).userData.damagePanel = true;
     block(cab, darkMaterial, 0, 1.58, 3.6, 1.56, 0.65, 0.06);
     for (let row = 0; row < 5; row++) block(cab, steelMaterial, 0, 1.34 + row * 0.12, 3.645, 1.5, 0.025, 0.025);
     for (const side of [-1, 1]) {
@@ -238,8 +239,8 @@ export class TruckModel {
     this.lastSpeed = speed;
     const smoothing = 1 - Math.exp(-dt * 5);
     this.cabin.rotation.x = THREE.MathUtils.lerp(this.cabin.rotation.x, THREE.MathUtils.clamp(-acceleration * 0.007, -0.025, 0.025), smoothing);
-    this.cabin.rotation.z = THREE.MathUtils.lerp(this.cabin.rotation.z, THREE.MathUtils.clamp(steering * speed * 0.014, -0.045, 0.045), smoothing);
-    this.cabin.position.y = Math.sin(this.elapsed * 8) * Math.min(0.012, speed * 0.0006);
+    this.cabin.rotation.z = THREE.MathUtils.lerp(this.cabin.rotation.z, THREE.MathUtils.clamp(steering * Math.abs(speed) * 0.014, -0.045, 0.045), smoothing);
+    this.cabin.position.y = Math.sin(this.elapsed * 8) * Math.min(0.012, Math.abs(speed) * 0.0006);
     this.lamps.emissiveIntensity = headlights ? 2 : 0.18;
     this.brakeLamps.emissiveIntensity = brake ? 2.5 : 0.15;
     const flashing = Math.sin(this.elapsed * 8) > 0 ? 2 : 0;

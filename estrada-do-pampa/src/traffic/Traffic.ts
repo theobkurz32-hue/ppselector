@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Route } from '../road/Route';
-import { createTrafficVehicle } from './VehicleModel';
+import { createTrafficVehicle, updateTrafficVehicle } from './VehicleModel';
 
 type VehicleKind = 'car' | 'suv' | 'bus' | 'truck';
 export interface TrafficVehicle {
@@ -18,6 +18,12 @@ export interface TrafficVehicle {
   passTarget: number | null;
   caution: number;
   collisionTimer: number;
+  damage: number;
+  crashed: boolean;
+  crashVelocity: number;
+  lateralVelocity: number;
+  spin: number;
+  spinVelocity: number;
 }
 interface Player { s: number; lateral: number; speed: number }
 interface Blockage { s: number; lateral: number }
@@ -42,7 +48,8 @@ export class Traffic {
       this.vehicles.push({ id: i, s: 0, lateral: 1.8, speed: 0, direction: 1,
         length: kind === 'truck' ? 14 : kind === 'bus' ? 11.5 : 4.8, mesh,
         desiredSpeed: 20, kind, active: false, passing: false, passTarget: null,
-        caution: 1.1 + (i % 5) * 0.16, collisionTimer: 0 });
+        caution: 1.1 + (i % 5) * 0.16, collisionTimer: 0,
+        damage: 0, crashed: false, crashVelocity: 0, lateralVelocity: 0, spin: 0, spinVelocity: 0 });
     }
     this.reset(0);
   }
@@ -77,6 +84,11 @@ export class Traffic {
     v.passing = false;
     v.passTarget = null;
     v.collisionTimer = 0;
+    v.damage = 0; v.crashed = false; v.crashVelocity = v.lateralVelocity = v.spin = v.spinVelocity = 0;
+    const resetDamage = v.mesh.userData.resetDamage as (() => void) | undefined; resetDamage?.();
+    v.mesh.userData.damage = 0;
+    const oldDamage = v.mesh.getObjectByName('collision-damage');
+    if (oldDamage) { oldDamage.removeFromParent(); oldDamage.traverse(object => { if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) { object.geometry.dispose(); const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach(material => material.dispose()); } }); }
     v.mesh.visible = true;
     this.place(v);
   }
@@ -99,6 +111,7 @@ export class Traffic {
       if (Math.abs(v.s - player.s) > 1600 || v.s < 0 || v.s > this.route.length) {
         v.active = false; v.mesh.visible = false; continue;
       }
+      if (v.crashed) continue;
       const ahead = this.route.sample(Math.min(this.route.length, v.s + v.direction * 45));
       const behind = this.route.sample(Math.max(0, v.s - v.direction * 30));
       let angle = ahead.heading - behind.heading;
@@ -114,7 +127,7 @@ export class Traffic {
         const delta = (other.s - v.s) * v.direction;
         if (delta > 0 && delta - (v.length + other.length) * 0.5 < gap) {
           gap = Math.max(0.3, delta - (v.length + other.length) * 0.5);
-          leaderSpeed = other.direction === v.direction ? other.speed : -other.speed;
+          leaderSpeed = other.crashed ? other.crashVelocity * v.direction : other.direction === v.direction ? other.speed : -other.speed;
           leaderId = other.id;
         }
       }
@@ -149,6 +162,17 @@ export class Traffic {
     }
     for (const v of active) {
       if (!v.active) continue;
+      if (v.crashed) {
+        const previousVelocity = v.crashVelocity;
+        v.crashVelocity = Math.sign(previousVelocity) * Math.max(0, Math.abs(previousVelocity) - 4.5 * step);
+        v.s += (previousVelocity + v.crashVelocity) * 0.5 * step;
+        v.speed = Math.abs(v.crashVelocity);
+        v.lateral = THREE.MathUtils.clamp(v.lateral + v.lateralVelocity * step, -8.5, 8.5);
+        v.lateralVelocity *= Math.exp(-step * 1.6);
+        v.spin += v.spinVelocity * step;
+        v.spinVelocity *= Math.exp(-step * 2.1);
+        continue;
+      }
       v.speed = Math.max(0, v.speed + (accelerations.get(v.id) ?? 0) * step);
       v.s += v.speed * v.direction * step;
       const desiredLateral = (v.passing ? -1 : 1) * v.direction * 1.8;
@@ -167,14 +191,55 @@ export class Traffic {
         }
       }
     }
-    for (const v of active) if (v.active) this.place(v);
+    for (const v of active) if (v.active) { this.place(v); updateTrafficVehicle(v.mesh, v.speed * (v.crashed ? Math.sign(v.crashVelocity) * v.direction : 1), v.passing ? .08 : 0, (accelerations.get(v.id) ?? 0) < -.4 || v.crashed, step); }
   }
 
   private place(v: TrafficVehicle): void {
     const sample = this.route.sample(v.s);
     v.mesh.position.copy(sample.position).addScaledVector(sample.right, v.lateral);
+    if (Math.abs(v.lateral) > 5.2) v.mesh.position.y = this.route.terrainHeight?.(v.mesh.position.x, v.mesh.position.z) ?? sample.position.y;
     v.mesh.position.y += 0.04;
-    v.mesh.rotation.set(-Math.atan(sample.grade) * v.direction, sample.heading + (v.direction < 0 ? Math.PI : 0), 0, 'YXZ');
+    v.mesh.rotation.set(-Math.atan(sample.grade) * v.direction, sample.heading + (v.direction < 0 ? Math.PI : 0) + v.spin, THREE.MathUtils.clamp(v.spinVelocity * 0.045, -.08, .08), 'YXZ');
+  }
+
+  /** Impulse along the measured road axis; a light car cannot arrest a heavy tractor. */
+  resolveImpact(id: number, player: Player & { mass: number }): { relativeSpeed: number; playerSpeed: number; lateralImpulse: number; energy: number } {
+    const v = this.vehicles.find(candidate => candidate.id === id && candidate.active);
+    if (!v) return { relativeSpeed: 0, playerSpeed: player.speed, lateralImpulse: 0, energy: 0 };
+    const otherMass = v.kind === 'truck' ? 26000 : v.kind === 'bus' ? 13500 : v.kind === 'suv' ? 2250 : 1650;
+    const mass = Math.max(1000, player.mass);
+    const otherVelocity = v.crashed ? v.crashVelocity : v.speed * v.direction;
+    const relative = player.speed - otherVelocity;
+    const restitution = 0.08;
+    const reducedMass = mass * otherMass / (mass + otherMass);
+    const impulse = (1 + restitution) * reducedMass * relative;
+    const energy = 0.5 * reducedMass * relative ** 2 * (1 - restitution ** 2);
+    const side = Math.sign(v.lateral - player.lateral) || (v.id % 2 ? -1 : 1);
+    const severity = THREE.MathUtils.clamp(energy / otherMass / 2.2, 0, 100);
+    v.damage = THREE.MathUtils.clamp(v.damage + severity, 0, 100);
+    v.mesh.userData.damage = v.damage;
+    v.passing = false; v.passTarget = null;
+    if (Math.abs(relative) > 1.2) {
+      v.crashed = true;
+      v.crashVelocity = THREE.MathUtils.clamp(otherVelocity + impulse / otherMass, -36, 36);
+      v.speed = Math.abs(v.crashVelocity);
+      v.lateralVelocity += side * THREE.MathUtils.clamp(Math.abs(impulse) / otherMass * .11, .2, 6);
+      v.spinVelocity += side * THREE.MathUtils.clamp(energy / otherMass / 180, .08, 1.8);
+      // Resolve only the penetration, retaining velocity for the impact aftermath.
+      const separation = v.length * .5 + 8.15;
+      const along = Math.sign(v.s - player.s) || Math.sign(relative) || 1;
+      if (Math.abs(v.s - player.s) < separation) v.s = player.s + along * separation;
+    } else {
+      v.speed = Math.max(0, (otherVelocity + impulse / otherMass) * v.direction);
+    }
+    v.collisionTimer = 3;
+    this.place(v);
+    return {
+      relativeSpeed: Math.abs(relative),
+      playerSpeed: player.speed - impulse / mass,
+      lateralImpulse: -side * THREE.MathUtils.clamp(Math.abs(impulse) / mass * .12, 0, 2.5),
+      energy,
+    };
   }
 
   collision(s: number, lateral: number): { relativeSpeed: number; id: number } | null {
@@ -182,8 +247,7 @@ export class Traffic {
       if (!v.active || v.collisionTimer > 0 || Math.abs(v.lateral - lateral) > 2.25) continue;
       if (Math.abs(v.s - s) < v.length * 0.5 + 8) {
         v.collisionTimer = 2.2;
-        const relativeSpeed = Math.abs(this.player.speed - v.speed * v.direction);
-        v.speed *= 0.35;
+        const relativeSpeed = Math.abs(this.player.speed - (v.crashed ? v.crashVelocity : v.speed * v.direction));
         return { relativeSpeed, id: v.id };
       }
     }
