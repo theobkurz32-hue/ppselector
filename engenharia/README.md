@@ -1,6 +1,6 @@
 # Théo Kurz · Engenharia Civil
 
-Site de apresentação de assessoria em engenharia, laudos, vistorias e coordenação de projetos. Interface pensada primeiro para celular, com paleta de concreto, madeira e aço oxidado.
+Site de apresentação de assessoria em engenharia, laudos, vistorias e coordenação de projetos. Interface pensada primeiro para celular, com fundo preto, tipografia branca e superfícies em cinza escuro.
 
 Endereço: https://theobkurz32-hue.github.io/ppselector/engenharia/
 
