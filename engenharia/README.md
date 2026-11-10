@@ -10,7 +10,8 @@ Este site está inteiramente na pasta `engenharia/` do repositório existente. A
 
 - Página responsiva em HTML, CSS e JavaScript, sem dependências de execução.
 - Menu mobile com navegação por seções e controle por teclado.
-- Portfólio na abertura, com três fotos reais, deslize horizontal, setas e visualização ampliada. As fotos mantêm a proporção original, sem cortes e sem reprodução automática.
+- Abertura visual com 13 fotos reais em um mosaico assimétrico, sem título visível nem carrossel. Imagens grandes, pequenas, verticais e horizontais compartilham a composição; todas aparecem na página, em duas colunas no celular e quatro em telas maiores.
+- Cada foto abre uma visualização ampliada com o arquivo original completo, sem cortes. No mosaico, o enquadramento se adapta à proporção de cada bloco.
 - Soluções com escopo, formatos de entrega e acesso ao contato.
 - Três PDFs demonstrativos para visualizar e baixar.
 - Formulário que prepara uma mensagem no WhatsApp, sem armazenar os dados no site.
@@ -21,12 +22,12 @@ Este site está inteiramente na pasta `engenharia/` do repositório existente. A
 - `index.html`: textos, seções, serviços e links dos exemplos.
 - `styles.css`: cores, tipografia e organização em diferentes tamanhos de tela.
 - `site.config.js`: WhatsApp em formato internacional, somente dígitos, e e-mail.
-- `assets/portfolio/`: fotografias enviadas pelo proprietário, preservadas em JPEG sem alterações. A vista geral mais iluminada (`ambiente-02.jpg`) abre a galeria; as demais mostram outras perspectivas do mesmo ambiente.
+- `assets/portfolio/`: fotografias enviadas pelo proprietário, preservadas em JPEG sem alterações. `espaco-01.jpg` a `espaco-10.jpg` apresentam diferentes ambientes; `ambiente-01.jpg` a `ambiente-03.jpg` são as primeiras imagens enviadas do espaço para apresentações.
 - `assets/exemplos/`: PDFs demonstrativos. Substitua por entregas reais autorizadas quando disponíveis e atualize os textos de identificação no HTML.
 
 O nome profissional também aparece nos metadados, na marca, nas miniaturas e no rodapé de `index.html`. Ao mudar a identidade, atualize esses trechos e o texto de saudação de `script.js`.
 
-As legendas do portfólio descrevem apenas o que aparece nas fotos; o escopo de atuação nesse ambiente ainda pode ser detalhado pelo proprietário. Os serviços e formatos apresentados são uma organização inicial da oferta informada. Escopo, responsáveis técnicos e condições devem ser definidos por contratação. Não há preços, depoimentos ou credenciais inventados.
+As descrições acessíveis e as legendas na visualização ampliada descrevem apenas o que aparece nas fotos; o escopo de atuação nesses ambientes ainda pode ser detalhado pelo proprietário. Os serviços e formatos apresentados são uma organização inicial da oferta informada. Escopo, responsáveis técnicos e condições devem ser definidos por contratação. Não há preços, depoimentos ou credenciais inventados.
 
 ## Executar localmente
 
