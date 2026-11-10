@@ -10,6 +10,7 @@ Este site está inteiramente na pasta `engenharia/` do repositório existente. A
 
 - Página responsiva em HTML, CSS e JavaScript, sem dependências de execução.
 - Menu mobile com navegação por seções e controle por teclado.
+- Portfólio na abertura, com três fotos reais, deslize horizontal, setas e visualização ampliada. As fotos mantêm a proporção original, sem cortes e sem reprodução automática.
 - Soluções com escopo, formatos de entrega e acesso ao contato.
 - Três PDFs demonstrativos para visualizar e baixar.
 - Formulário que prepara uma mensagem no WhatsApp, sem armazenar os dados no site.
@@ -20,12 +21,12 @@ Este site está inteiramente na pasta `engenharia/` do repositório existente. A
 - `index.html`: textos, seções, serviços e links dos exemplos.
 - `styles.css`: cores, tipografia e organização em diferentes tamanhos de tela.
 - `site.config.js`: WhatsApp em formato internacional, somente dígitos, e e-mail.
-- `assets/engineering-materials.webp`: fotografia ilustrativa da página inicial, gerada para este conceito.
+- `assets/portfolio/`: fotografias enviadas pelo proprietário, preservadas em JPEG sem alterações. A vista geral mais iluminada (`ambiente-02.jpg`) abre a galeria; as demais mostram outras perspectivas do mesmo ambiente.
 - `assets/exemplos/`: PDFs demonstrativos. Substitua por entregas reais autorizadas quando disponíveis e atualize os textos de identificação no HTML.
 
 O nome profissional também aparece nos metadados, na marca, nas miniaturas e no rodapé de `index.html`. Ao mudar a identidade, atualize esses trechos e o texto de saudação de `script.js`.
 
-Os serviços e formatos apresentados são uma organização inicial da oferta informada. Escopo, responsáveis técnicos e condições devem ser definidos por contratação. Não há preços, depoimentos ou credenciais inventados.
+As legendas do portfólio descrevem apenas o que aparece nas fotos; o escopo de atuação nesse ambiente ainda pode ser detalhado pelo proprietário. Os serviços e formatos apresentados são uma organização inicial da oferta informada. Escopo, responsáveis técnicos e condições devem ser definidos por contratação. Não há preços, depoimentos ou credenciais inventados.
 
 ## Executar localmente
 

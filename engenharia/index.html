@@ -9,11 +9,14 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Théo Kurz · Assessoria em Engenharia Civil">
   <meta property="og:description" content="Seu imóvel. O próximo passo bem orientado. Laudos, vistorias, projetos e assessoria em engenharia.">
+  <meta property="og:image" content="https://theobkurz32-hue.github.io/ppselector/engenharia/assets/portfolio/ambiente-02.jpg">
+  <meta property="og:image:alt" content="Vista geral do ambiente apresentado no portfólio de Théo Kurz">
+  <meta property="og:url" content="https://theobkurz32-hue.github.io/ppselector/engenharia/">
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="./assets/engineering-materials.webp" as="image" type="image/webp">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="preload" href="./assets/portfolio/ambiente-02.jpg" as="image" type="image/jpeg">
+  <link rel="stylesheet" href="./styles.css?v=portfolio-1">
   <script src="./site.config.js" defer></script>
-  <script src="./script.js" defer></script>
+  <script src="./script.js?v=portfolio-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
@@ -22,6 +25,7 @@
       <a class="brand" href="#inicio" aria-label="Théo Kurz, início"><span class="brand-name" data-name>Théo Kurz<span class="brand-dot">.</span></span><span class="brand-caption">ENGENHARIA CIVIL</span></a>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="navigation" aria-label="Abrir menu"><span></span><span></span></button>
       <nav class="navigation" id="navigation" aria-label="Navegação principal" hidden>
+        <a href="#inicio">Portfólio</a>
         <a href="#solucoes">Soluções</a>
         <a href="#entregas">O que você recebe</a>
         <a href="#como-funciona">Como funciona</a>
@@ -31,17 +35,60 @@
   </header>
 
   <main id="conteudo">
-    <section class="hero shell" id="inicio" aria-labelledby="hero-title">
+    <section class="portfolio shell" id="inicio" aria-labelledby="portfolio-title">
+      <div class="portfolio-layout">
+        <div class="portfolio-heading">
+          <p class="eyebrow">EM DESTAQUE</p>
+          <h1 id="portfolio-title">Portfólio.</h1>
+          <p>Um ambiente, diferentes perspectivas.</p>
+        </div>
+        <div class="portfolio-gallery">
+          <div class="portfolio-track" id="portfolio-track" role="region" aria-roledescription="carrossel" aria-label="Fotografias do portfólio" tabindex="0">
+            <figure class="portfolio-slide" role="group" aria-roledescription="imagem" aria-label="1 de 3: vista geral">
+              <a class="portfolio-photo" href="./assets/portfolio/ambiente-02.jpg" target="_blank" rel="noopener" data-portfolio-photo aria-label="Ampliar foto: vista geral do ambiente">
+                <img src="./assets/portfolio/ambiente-02.jpg" width="1280" height="960" alt="Vista geral de um ambiente para apresentações, com fileiras de cadeiras, telas e elementos suspensos no teto" fetchpriority="high" decoding="async">
+                <span class="photo-expand" aria-hidden="true">Ampliar ↗</span>
+              </a>
+              <figcaption><span>Vista geral do ambiente</span><span class="photo-number" aria-hidden="true">01</span></figcaption>
+            </figure>
+            <figure class="portfolio-slide" role="group" aria-roledescription="imagem" aria-label="2 de 3: perspectiva lateral">
+              <a class="portfolio-photo" href="./assets/portfolio/ambiente-03.jpg" target="_blank" rel="noopener" data-portfolio-photo aria-label="Ampliar foto: perspectiva lateral do ambiente">
+                <img src="./assets/portfolio/ambiente-03.jpg" width="1280" height="960" alt="Perspectiva lateral do mesmo ambiente, mostrando as cadeiras, as telas e a iluminação do espaço" loading="lazy" decoding="async">
+                <span class="photo-expand" aria-hidden="true">Ampliar ↗</span>
+              </a>
+              <figcaption><span>Perspectiva lateral</span><span class="photo-number" aria-hidden="true">02</span></figcaption>
+            </figure>
+            <figure class="portfolio-slide" role="group" aria-roledescription="imagem" aria-label="3 de 3: iluminação ambiente">
+              <a class="portfolio-photo" href="./assets/portfolio/ambiente-01.jpg" target="_blank" rel="noopener" data-portfolio-photo aria-label="Ampliar foto: ambiente com iluminação reduzida">
+                <img src="./assets/portfolio/ambiente-01.jpg" width="1280" height="960" alt="Vista frontal do ambiente com iluminação reduzida e as três telas acesas" loading="lazy" decoding="async">
+                <span class="photo-expand" aria-hidden="true">Ampliar ↗</span>
+              </a>
+              <figcaption><span>Iluminação ambiente</span><span class="photo-number" aria-hidden="true">03</span></figcaption>
+            </figure>
+          </div>
+          <div class="portfolio-controls">
+            <p class="portfolio-hint">Deslize para explorar</p>
+            <div class="portfolio-navigation" hidden>
+              <button class="gallery-arrow" type="button" data-gallery-prev aria-label="Foto anterior" aria-controls="portfolio-track" disabled>←</button>
+              <span id="portfolio-position" role="status" aria-atomic="true"><span class="visually-hidden">Imagem </span>01 / 03</span>
+              <button class="gallery-arrow" type="button" data-gallery-next aria-label="Próxima foto" aria-controls="portfolio-track">→</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero hero-compact shell" aria-labelledby="hero-title">
       <div class="hero-copy">
+        <div>
         <p class="eyebrow">ASSESSORIA EM ENGENHARIA</p>
-        <h1 id="hero-title">Seu imóvel.<br>O próximo passo<br>bem orientado.</h1>
+        <h2 id="hero-title">Seu imóvel.<br>O próximo passo bem orientado.</h2>
+        </div>
+        <div>
         <p class="hero-description">Entenda o que você precisa e conte com orientação para reunir as soluções e os profissionais certos.</p>
         <a class="button button-dark hero-button" href="#solucoes">Entender minha necessidade <span aria-hidden="true">→</span></a>
+        </div>
       </div>
-      <figure class="hero-figure">
-        <img src="./assets/engineering-materials.webp" width="1586" height="992" alt="Planta técnica sobre uma mesa, com amostras de concreto, madeira e aço oxidado" fetchpriority="high" decoding="async">
-        <figcaption>Clareza para decidir. Organização para avançar.</figcaption>
-      </figure>
     </section>
 
     <section class="section shell solutions" id="solucoes" aria-labelledby="solutions-title">
@@ -142,6 +189,13 @@
       </div>
     </section>
   </main>
+  <dialog class="portfolio-lightbox" id="portfolio-lightbox" aria-labelledby="lightbox-title">
+    <div class="lightbox-inner">
+      <header class="lightbox-header"><p id="lightbox-title">Portfólio · Théo Kurz</p><button class="lightbox-close" type="button" aria-label="Fechar imagem ampliada" autofocus>×</button></header>
+      <img class="lightbox-image" id="lightbox-image" width="1280" height="960" alt="">
+      <div class="lightbox-footer"><p id="lightbox-caption" role="status" aria-atomic="true"></p><div class="lightbox-navigation"><button class="gallery-arrow" type="button" data-lightbox-prev aria-label="Ampliar foto anterior">←</button><span id="lightbox-position" aria-hidden="true">01 / 03</span><button class="gallery-arrow" type="button" data-lightbox-next aria-label="Ampliar próxima foto">→</button></div></div>
+    </div>
+  </dialog>
   <footer class="site-footer"><div class="shell footer-inner"><a class="footer-name" href="#inicio">Eng. civil Théo Kurz</a><p>Assessoria · Projetos · Soluções</p><a href="#inicio" class="back-top">Voltar ao início <span aria-hidden="true">↑</span></a></div></footer>
 </body>
 </html>
