@@ -31,11 +31,14 @@ else:
 
 W, H = A4
 LEFT, RIGHT = 46, W - 46
-INK = colors.HexColor("#2A2B28")
-MUTED = colors.HexColor("#64645E")
-LINE = colors.HexColor("#D8D7D1")
-PAPER = colors.HexColor("#F4F3EF")
-RUST = colors.HexColor("#88523C")
+INK = colors.HexColor("#1E1E1E")
+MUTED = colors.HexColor("#55504A")
+LINE = colors.HexColor("#C6B6A4")
+PAPER = colors.HexColor("#E6DED3")
+BRONZE = colors.HexColor("#A37C52")
+# A darker bronze keeps small labels legible on the stone background.
+RUST = colors.HexColor("#745234")
+PANEL = colors.HexColor("#D9CCBC")
 
 
 def text(c, value, x, top, size=10, color=INK, strong=False, width=None, leading=None):
@@ -52,9 +55,10 @@ def text(c, value, x, top, size=10, color=INK, strong=False, width=None, leading
 def header(c, title, subtitle, code):
     c.setFillColor(PAPER)
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    c.setFillColor(RUST)
-    c.rect(LEFT, H - 56, 4, 16, fill=1, stroke=0)
-    text(c, "EXEMPLO ILUSTRATIVO", LEFT + 14, H - 39, 9, RUST, True)
+    c.setFillColor(BRONZE)
+    c.rect(LEFT, H - 64, 4, 25, fill=1, stroke=0)
+    text(c, "LÍTICA ENGENHARIA", LEFT + 14, H - 35, 10, INK, True)
+    text(c, "EXEMPLO ILUSTRATIVO", LEFT + 14, H - 52, 8, RUST, True)
     text(c, code, W - 102, H - 39, 8, MUTED, width=56)
     y = text(c, title, LEFT, H - 93, 27, INK, True, leading=34)
     y = text(c, subtitle, LEFT, y - 11, 11, MUTED, leading=17)
@@ -82,8 +86,8 @@ def footer(c):
 
 def new_file(filename, title):
     c = canvas.Canvas(str(OUT / filename), pagesize=A4, pageCompression=1)
-    c.setTitle(title + " — exemplo ilustrativo")
-    c.setAuthor("Portfólio de engenharia — modelo demonstrativo")
+    c.setTitle("Lítica Engenharia — " + title + " — exemplo ilustrativo")
+    c.setAuthor("Lítica Engenharia")
     c.setSubject("Amostra ilustrativa, sem dados de clientes ou conclusões técnicas reais")
     return c
 
@@ -94,7 +98,7 @@ def report():
     y = section(c, "01", "Objetivo e contexto", "Identificação da demanda, finalidade da visita, áreas previstas para observação e documentos disponibilizados. O escopo e os limites da avaliação são definidos para cada contratação.", y)
     y = section(c, "02", "Registro da visita", "Organização de fotografias e anotações por ambiente ou elemento observado. Cada registro pode reunir localização, descrição e referência visual para facilitar a leitura.", y)
     # A schematic record frame intentionally contains no image of an actual property.
-    c.setFillColor(colors.HexColor("#E7E6E0"))
+    c.setFillColor(PANEL)
     c.roundRect(LEFT + 32, y - 80, RIGHT - LEFT - 32, 77, 4, fill=1, stroke=0)
     text(c, "ESPAÇO DE REGISTRO ILUSTRATIVO", LEFT + 46, y - 15, 8, MUTED, True)
     text(c, "Ambiente: a identificar  ·  Referência: foto / anotação", LEFT + 46, y - 36, 9, MUTED)
@@ -116,13 +120,13 @@ def checklist():
     for i, (title, items) in enumerate(groups, 1):
         y = text(c, f"0{i}  {title}", LEFT, y, 12, INK, True) - 15
         for item in items:
-            c.setStrokeColor(RUST)
+            c.setStrokeColor(BRONZE)
             c.setLineWidth(.8)
             c.roundRect(LEFT + 2, y - 12, 10, 10, 1, fill=0, stroke=1)
             bottom = text(c, item, LEFT + 25, y + 1, 10, MUTED, leading=16)
             y = bottom - 14
         y -= 12
-    c.setFillColor(colors.HexColor("#E7E6E0"))
+    c.setFillColor(PANEL)
     c.roundRect(LEFT, y - 62, RIGHT - LEFT, 59, 4, fill=1, stroke=0)
     text(c, "VOCÊ PODE COMEÇAR COM UMA DÚVIDA.", LEFT + 14, y - 15, 9, RUST, True)
     text(c, "Não é necessário conhecer a especialidade técnica para explicar o que precisa.", LEFT + 14, y - 34, 9, MUTED)

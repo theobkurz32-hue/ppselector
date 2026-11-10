@@ -1,6 +1,6 @@
-# Théo Kurz · Engenharia Civil
+# Lítica Engenharia
 
-Site de apresentação de assessoria em engenharia, laudos, vistorias e coordenação de projetos. Interface pensada primeiro para celular, com fundo preto, tipografia branca e superfícies em cinza escuro.
+Site de apresentação de assessoria em engenharia, laudos, vistorias e coordenação de projetos da Lítica Engenharia. Interface pensada primeiro para celular, com a identidade visual fornecida: grafite profundo `#1E1E1E`, bege pedra `#E6DED3` e bronze mineral `#A37C52`. O verde da referência não faz parte do tema.
 
 Endereço: https://theobkurz32-hue.github.io/ppselector/engenharia/
 
@@ -22,10 +22,11 @@ Este site está inteiramente na pasta `engenharia/` do repositório existente. A
 - `index.html`: textos, seções, serviços e links dos exemplos.
 - `styles.css`: cores, tipografia e organização em diferentes tamanhos de tela.
 - `site.config.js`: WhatsApp em formato internacional, somente dígitos, e e-mail.
+- `assets/brand/`: logo horizontal e símbolo da Lítica Engenharia, baseados na referência fornecida. O símbolo também é usado como favicon.
 - `assets/portfolio/`: fotografias enviadas pelo proprietário, preservadas em JPEG sem alterações. `espaco-01.jpg` a `espaco-10.jpg` apresentam diferentes ambientes; `ambiente-01.jpg` a `ambiente-03.jpg` são as primeiras imagens enviadas do espaço para apresentações.
 - `assets/exemplos/`: PDFs demonstrativos. Substitua por entregas reais autorizadas quando disponíveis e atualize os textos de identificação no HTML.
 
-O nome profissional também aparece nos metadados, na marca, nas miniaturas e no rodapé de `index.html`. Ao mudar a identidade, atualize esses trechos e o texto de saudação de `script.js`.
+A marca principal é Lítica Engenharia em todos os textos, metadados, miniaturas e mensagens de contato. Théo Kurz aparece no site somente como responsável técnico no rodapé. Os canais de contato informados foram mantidos.
 
 As descrições acessíveis e as legendas na visualização ampliada descrevem apenas o que aparece nas fotos; o escopo de atuação nesses ambientes ainda pode ser detalhado pelo proprietário. Os serviços e formatos apresentados são uma organização inicial da oferta informada. Escopo, responsáveis técnicos e condições devem ser definidos por contratação. Não há preços, depoimentos ou credenciais inventados.
 

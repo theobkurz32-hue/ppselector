@@ -46,11 +46,6 @@ document.querySelectorAll('[data-service]').forEach((link) => {
 const emailLink = document.querySelector('[data-email]');
 if (config.email) {
   emailLink.href = `mailto:${config.email}`;
-  emailLink.replaceChildren(document.createTextNode(config.email + ' '));
-  const arrow = document.createElement('span');
-  arrow.textContent = '↗';
-  arrow.setAttribute('aria-hidden', 'true');
-  emailLink.append(arrow);
 }
 
 document.querySelector('#contact-form').addEventListener('submit', (event) => {
@@ -59,7 +54,7 @@ document.querySelector('#contact-form').addEventListener('submit', (event) => {
   const clientName = String(data.get('name') || '').trim();
   const service = String(data.get('service') || '').trim();
   const message = String(data.get('message') || '').trim();
-  const greeting = clientName ? `Olá, Théo! Meu nome é ${clientName}.` : 'Olá, Théo!';
+  const greeting = clientName ? `Olá, Lítica Engenharia! Meu nome é ${clientName}.` : 'Olá, Lítica Engenharia!';
   const parts = [greeting, `Tenho interesse em: ${service}.`];
   if (message) parts.push(message);
   const text = encodeURIComponent(parts.join('\n\n'));
@@ -67,7 +62,7 @@ document.querySelector('#contact-form').addEventListener('submit', (event) => {
   if (phone) {
     window.location.assign(`https://wa.me/${phone}?text=${text}`);
   } else if (config.email) {
-    window.location.assign(`mailto:${config.email}?subject=${encodeURIComponent('Assessoria em engenharia — ' + service)}&body=${text}`);
+    window.location.assign(`mailto:${config.email}?subject=${encodeURIComponent('Lítica Engenharia — ' + service)}&body=${text}`);
   }
 });
 
